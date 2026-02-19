@@ -1,6 +1,6 @@
 # EdgeFirst Yocto
 
-Yocto manifests for building EdgeFirst embedded Linux images. Currently supports NXP i.MX platforms, designed to extend to other vendors.
+Yocto manifests for building EdgeFirst embedded Linux images. Currently supports NXP i.MX platforms, designed to extend to other vendors building i.MX-based platforms.
 
 ## Prerequisites
 
