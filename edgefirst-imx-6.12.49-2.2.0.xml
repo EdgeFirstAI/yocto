@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <include name="base/imx-6.12.49-2.2.0.xml" />
+
+  <remote name="edgefirst" fetch="https://github.com/EdgeFirstAI" />
+
+  <!-- Override NXP README with ours -->
+  <extend-project name="meta-imx">
+    <linkfile src="README.md" dest="README-NXP.md" />
+  </extend-project>
+
+  <!-- Our layers -->
+  <project name="meta-edgefirst" remote="edgefirst" path="sources/meta-edgefirst" revision="main" />
+  <project name="meta-kinara" remote="edgefirst" path="sources/meta-kinara" revision="main" />
+
+  <!-- Manifest repo self-reference for tooling -->
+  <project name="yocto" remote="edgefirst" path=".edgefirst" revision="main">
+    <linkfile src=".github" dest=".github" />
+    <linkfile src="README.md" dest="README.md" />
+  </project>
+</manifest>
