@@ -4,9 +4,15 @@
 
   <remote name="edgefirst" fetch="https://github.com/EdgeFirstAI" />
 
-  <!-- Override NXP README with ours -->
+  <!-- Move NXP setup scripts out of root (we use edgefirst-setup instead) -->
+  <extend-project name="fsl-community-bsp-base">
+    <linkfile src="setup-environment" dest=".nxp-setup/setup-environment" />
+  </extend-project>
+
+  <!-- Override NXP README; move imx-setup-release.sh out of root -->
   <extend-project name="meta-imx">
     <linkfile src="README.md" dest="README-NXP.md" />
+    <linkfile src="tools/imx-setup-release.sh" dest=".nxp-setup/imx-setup-release.sh" />
   </extend-project>
 
   <!-- Our layers -->
