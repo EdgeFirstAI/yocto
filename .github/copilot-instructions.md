@@ -12,6 +12,9 @@ EdgeFirstAI/yocto/
       repo-deploy.sh              # Publish images/SDKs to S3
   base/
     imx-6.12.49-2.2.0.xml        # NXP base manifest (from nxp-imx/imx-manifest)
+  templates/
+    imx/
+      bblayers.conf               # NXP layers + meta-edgefirst + meta-kinara
   edgefirst-imx-6.12.49-2.2.0.xml  # EdgeFirst overlay manifest
   README.md
 ```
@@ -22,9 +25,10 @@ EdgeFirstAI/yocto/
 .edgefirst/              # This manifest repo checkout
 .github → .edgefirst/.github        # Symlink (automatic)
 README.md → .edgefirst/README.md    # Symlink (automatic)
+edgefirst-setup → .edgefirst/edgefirst-setup  # Symlink (automatic)
 README-NXP.md → sources/meta-imx/README.md  # NXP readme (renamed)
-setup-environment → sources/base/setup-environment
-imx-setup-release.sh → sources/meta-imx/tools/imx-setup-release.sh
+setup-environment → sources/base/setup-environment  # NXP (unused)
+imx-setup-release.sh → sources/meta-imx/tools/imx-setup-release.sh  # NXP (unused)
 sources/
   meta-edgefirst/        # EdgeFirst perception platform layer
   meta-kinara/           # Kinara Ara-2 NPU support layer
@@ -56,14 +60,15 @@ repo init -u https://github.com/EdgeFirstAI/yocto.git \
     -b main -m edgefirst-imx-6.12.49-2.2.0.xml
 repo sync
 
-DISTRO=fsl-imx-wayland MACHINE=imx8mp-lpddr4-frdm source imx-setup-release.sh -b build
-
-# Configure build/conf/local.conf:
-#   - Remove MACHINE line (pass on command line)
-#   - Set PACKAGE_CLASSES = "package_deb"
-#   - Add package-management to EXTRA_IMAGE_FEATURES
-# Add meta-edgefirst and meta-kinara to build/conf/bblayers.conf
+# Set up build environment (prompts for NXP EULA on first run)
+source edgefirst-setup -b build
 ```
+
+The setup script automatically:
+- Sets `DISTRO=fsl-imx-wayland` and `PACKAGE_CLASSES=package_deb`
+- Installs `bblayers.conf` with all NXP + EdgeFirst layers
+- Omits `MACHINE` from `local.conf` (pass on command line)
+- Adds `package-management` to `EXTRA_IMAGE_FEATURES`
 
 ### Building
 
@@ -81,7 +86,7 @@ MACHINE=imx8mp-lpddr4-frdm bitbake edgefirst-hal
 ### Re-entering the build environment
 
 ```bash
-source sources/poky/oe-init-build-env build
+source edgefirst-setup -b build
 ```
 
 ## Publishing Images and SDKs
@@ -125,7 +130,7 @@ EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelin
 
 ### meta-kinara
 
-Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries.
+Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. The Ara-2 runtime requires `KINARA_MIRROR` to be configured (NDA required). See [setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required). Builds succeed without it since the runtime is not included by default.
 
 ## Adding Vendor Manifests
 

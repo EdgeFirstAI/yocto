@@ -1,0 +1,222 @@
+#!/bin/sh
+# EdgeFirst Yocto Build Environment Setup
+#
+# Usage: source edgefirst-setup [-b build-dir]
+#
+# Environment variables (optional):
+#   DISTRO  - Yocto distribution (default: fsl-imx-wayland)
+#   MACHINE - Target machine (optional — pass to bitbake if not set here)
+
+CWD=$(pwd)
+
+edgefirst_usage() {
+    cat <<EOF
+
+Usage: source edgefirst-setup [-b build-dir]
+
+  -b build-dir   Build directory (default: build)
+  -h             Show this help
+
+Environment variables:
+  DISTRO   Yocto distribution (default: fsl-imx-wayland)
+  MACHINE  Target machine (optional — can pass MACHINE= to bitbake instead)
+
+Supported machines:
+  imx8mp-lpddr4-frdm          i.MX 8M Plus FRDM
+  imx8mpevk                   i.MX 8M Plus EVK
+  imx95-15x15-lpddr4x-frdm   i.MX 95 FRDM
+  imx95-19x19-lpddr5-evk     i.MX 95 EVK
+
+Examples:
+  source edgefirst-setup -b build
+  MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full
+EOF
+}
+
+edgefirst_clean_up() {
+    unset CWD BUILD_DIR EDGEFIRST_DIR FSLDISTRO
+    unset EULA EULA_ACCEPTED FSL_EULA_FILE
+    unset edgefirst_first_run edgefirst_generated_config
+    unset edgefirst_usage edgefirst_clean_up
+}
+
+# ── Parse arguments ───────────────────────────────────────────────────────────
+BUILD_DIR="build"
+OLD_OPTIND=$OPTIND
+while getopts "b:h" edgefirst_opt; do
+    case $edgefirst_opt in
+        b) BUILD_DIR="$OPTARG" ;;
+        h) edgefirst_usage; OPTIND=$OLD_OPTIND; edgefirst_clean_up; return 0 ;;
+        *) OPTIND=$OLD_OPTIND; edgefirst_clean_up; return 1 ;;
+    esac
+done
+OPTIND=$OLD_OPTIND
+unset edgefirst_opt
+
+# ── Defaults ──────────────────────────────────────────────────────────────────
+FSLDISTRO="${DISTRO:-fsl-imx-wayland}"
+EDGEFIRST_DIR="$CWD/.edgefirst"
+
+if [ ! -d "$EDGEFIRST_DIR" ]; then
+    echo "ERROR: .edgefirst/ directory not found. Run 'repo sync' first."
+    edgefirst_clean_up
+    return 1
+fi
+
+# ── EULA file ─────────────────────────────────────────────────────────────────
+FSL_EULA_FILE="$CWD/sources/meta-imx/LICENSE.txt"
+if [ ! -e "$FSL_EULA_FILE" ]; then
+    echo "ERROR: NXP EULA not found at $FSL_EULA_FILE"
+    echo "Run 'repo sync' first."
+    edgefirst_clean_up
+    return 1
+fi
+
+# ── Detect first run ─────────────────────────────────────────────────────────
+if [ ! -e "$CWD/$BUILD_DIR/conf/local.conf.sample" ]; then
+    edgefirst_first_run=true
+else
+    edgefirst_first_run=false
+fi
+
+# ── Source poky's oe-init-build-env ───────────────────────────────────────────
+# This creates the build directory on first run and adds bitbake to PATH.
+# We pass a dummy MACHINE since oe-setup-builddir uses it for the template,
+# but we regenerate local.conf ourselves.
+DISTRO=$FSLDISTRO MACHINE="${MACHINE:-notset}" \
+    . "$CWD/sources/poky/oe-init-build-env" "$CWD/$BUILD_DIR" > /dev/null
+
+# After sourcing, CWD is now the build directory
+if [ ! -e conf/local.conf ]; then
+    echo "ERROR: Build directory setup failed."
+    edgefirst_clean_up
+    return 1
+fi
+
+# Clean up PATH (remove empty/current-dir entries)
+export PATH="$(echo $PATH | sed 's/\(:.\|:\)*:/:/g;s/^.\?://;s/:.\?$//')"
+
+# ── First-time configuration ─────────────────────────────────────────────────
+edgefirst_generated_config=
+if [ "$edgefirst_first_run" = "true" ]; then
+    # Save poky's generated local.conf as marker for re-entry detection
+    mv conf/local.conf conf/local.conf.sample
+
+    # Generate local.conf: strip comments from poky defaults, apply our settings
+    grep -v '^#\|^$' conf/local.conf.sample > conf/local.conf
+
+    cat >> conf/local.conf <<DLEOF
+
+DL_DIR ?= "\${BSPDIR}/downloads/"
+DLEOF
+
+    # Set DISTRO and package format
+    sed -e "s,DISTRO ?=.*,DISTRO ?= '$FSLDISTRO',g" \
+        -e "s,PACKAGE_CLASSES ?=.*,PACKAGE_CLASSES ?= 'package_deb',g" \
+        -i conf/local.conf
+
+    # MACHINE: set in local.conf if provided, otherwise remove the line
+    # so the user must pass MACHINE= on the bitbake command line
+    if [ -n "$MACHINE" ] && [ "$MACHINE" != "notset" ]; then
+        sed -e "s,MACHINE ??=.*,MACHINE ??= '$MACHINE',g" -i conf/local.conf
+    else
+        sed -e '/^MACHINE ??=/d' -i conf/local.conf
+    fi
+
+    # Enable package-management (apt on targets)
+    cat >> conf/local.conf <<PKGEOF
+
+# Include package-management in image (apt available on targets)
+EXTRA_IMAGE_FEATURES += "package-management"
+PKGEOF
+
+    # Install our bblayers.conf (NXP layers + EdgeFirst layers)
+    cp "$EDGEFIRST_DIR/templates/imx/bblayers.conf" conf/bblayers.conf
+
+    # Apply NXP machine/bbclass overrides: remove upstream files that
+    # meta-imx layers override (same mechanism as imx-setup-release.sh)
+    . "$CWD/sources/meta-imx/tools/setup-utils.sh"
+    for edgefirst_layer in meta-imx/meta-imx-bsp meta-imx/meta-imx-sdk \
+                           meta-imx/meta-imx-ml meta-imx/meta-imx-v2x; do
+        machine_overrides $edgefirst_layer meta-freescale
+        bbclass_overrides $edgefirst_layer meta-freescale
+    done
+    unset edgefirst_layer
+
+    edgefirst_generated_config=1
+fi
+
+# ── Handle NXP EULA ──────────────────────────────────────────────────────────
+EULA_ACCEPTED=
+if grep -q '^\s*ACCEPT_FSL_EULA\s*=\s*["'"'"']..*["'"'"']' conf/local.conf; then
+    EULA_ACCEPTED=1
+fi
+
+if [ -z "$EULA_ACCEPTED" ] && [ -n "$EULA" ]; then
+    # EULA variable set in environment — use it
+    echo "ACCEPT_FSL_EULA = \"$EULA\"" >> conf/local.conf
+elif [ -n "$EULA_ACCEPTED" ]; then
+    # Already accepted
+    :
+else
+    # Prompt user to accept
+    cat <<EOF
+
+Some BSPs depend on libraries and packages which are covered by NXP's
+End User License Agreement (EULA). To have the right to use these binaries
+in your images, you need to read and accept the following...
+
+EOF
+    sleep 4
+    more -d "$FSL_EULA_FILE"
+    echo
+    REPLY=
+    while [ -z "$REPLY" ]; do
+        echo -n "Do you accept the EULA you just read? (y/n) "
+        read REPLY
+        case "$REPLY" in
+            y|Y)
+                echo "EULA has been accepted."
+                echo "ACCEPT_FSL_EULA = \"1\"" >> conf/local.conf
+                ;;
+            n|N)
+                echo "EULA has not been accepted."
+                ;;
+            *)
+                REPLY=
+                ;;
+        esac
+    done
+fi
+
+# ── Welcome message ───────────────────────────────────────────────────────────
+if [ -n "$edgefirst_generated_config" ]; then
+    cat <<EOF
+
+EdgeFirst build environment configured:
+
+    BUILD_DIR=$CWD/$BUILD_DIR
+    DISTRO=$FSLDISTRO
+EOF
+    if [ -n "$MACHINE" ] && [ "$MACHINE" != "notset" ]; then
+        echo "    MACHINE=$MACHINE"
+    else
+        echo "    MACHINE=(not set — pass MACHINE=<machine> to bitbake)"
+    fi
+    cat <<EOF
+
+You can now run:
+    MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full
+
+To re-enter this environment:
+    source edgefirst-setup -b $BUILD_DIR
+EOF
+else
+    cat <<EOF
+
+Build environment ready: $CWD/$BUILD_DIR
+    MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full
+EOF
+fi
+
+edgefirst_clean_up

@@ -16,31 +16,30 @@ repo init -u https://github.com/EdgeFirstAI/yocto.git \
     -b main -m edgefirst-imx-6.12.49-2.2.0.xml
 repo sync
 
-# 2. Set up build environment (first time)
-DISTRO=fsl-imx-wayland MACHINE=imx8mp-lpddr4-frdm source imx-setup-release.sh -b build
-```
+# 2. Set up build environment (first time — prompts for NXP EULA)
+source edgefirst-setup -b build
 
-After initial setup, edit `build/conf/local.conf`:
-
-- Remove the `MACHINE` line (pass it on the command line instead)
-- Set `PACKAGE_CLASSES = "package_deb"`
-- Add `package-management` to `EXTRA_IMAGE_FEATURES`
-
-Add our layers to `build/conf/bblayers.conf`:
-
-```
-BBLAYERS += "${BSPDIR}/sources/meta-edgefirst"
-BBLAYERS += "${BSPDIR}/sources/meta-kinara"
-```
-
-Then build:
-
-```bash
 # 3. Build an image
 MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full
+```
 
-# 4. Re-enter environment in a new shell
-source sources/poky/oe-init-build-env build
+The setup script:
+
+- Defaults to `fsl-imx-wayland` distro and `package_deb` packaging
+- Installs `bblayers.conf` with all NXP + EdgeFirst layers
+- Does not set `MACHINE` in `local.conf` — pass it on the `bitbake` command line
+- Prompts for NXP EULA acceptance (one time)
+
+To re-enter the build environment in a new shell:
+
+```bash
+source edgefirst-setup -b build
+```
+
+Optionally set `MACHINE` at setup time to bake it into `local.conf`:
+
+```bash
+MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build
 ```
 
 ## Supported Machines
@@ -121,3 +120,5 @@ EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelin
 ### [meta-kinara](https://github.com/EdgeFirstAI/meta-kinara)
 
 Kinara Ara-2 NPU support: kernel module, firmware, and userspace libraries.
+
+The Ara-2 runtime packages require `KINARA_MIRROR` to be configured (NDA required). See [Ara-2 Runtime setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required) for details. The Ara-2 runtime is not included in the default image, so builds will succeed without it.

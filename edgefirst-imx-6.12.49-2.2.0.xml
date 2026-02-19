@@ -17,5 +17,6 @@
   <project name="yocto" remote="edgefirst" path=".edgefirst" revision="main">
     <linkfile src=".github" dest=".github" />
     <linkfile src="README.md" dest="README.md" />
+    <linkfile src="edgefirst-setup" dest="edgefirst-setup" />
   </project>
 </manifest>
