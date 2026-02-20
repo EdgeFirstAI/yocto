@@ -1,13 +1,17 @@
 # EdgeFirst Yocto Manifests
 
-This repo (`EdgeFirstAI/yocto`) contains repo manifests for reproducing EdgeFirst Yocto builds on top of NXP i.MX (and future vendor) BSPs.
+This repo (`EdgeFirstAI/yocto`) contains [repo](https://gerrit.googlesource.com/git-repo/) manifests for reproducing EdgeFirst Yocto builds on NXP i.MX platforms (and future i.MX-based vendor platforms).
+
+## Rules
+
+- Always update `README.md` and `.github/copilot-instructions.md` when making changes that affect the project setup, usage instructions, or structure. Documentation must **ALWAYS** be kept up-to-date.
 
 ## Repository Structure
 
 ```
 EdgeFirstAI/yocto/
   .github/
-    copilot-instructions.md       # This file
+    copilot-instructions.md       # This file (CLAUDE.md format)
     scripts/
       repo-deploy.sh              # Publish images/SDKs to S3
   base/
@@ -16,26 +20,58 @@ EdgeFirstAI/yocto/
     imx/
       bblayers.conf               # NXP layers + meta-edgefirst + meta-kinara
   edgefirst-imx-6.12.49-2.2.0.xml  # EdgeFirst overlay manifest
+  edgefirst-setup                   # Build environment setup script
   README.md
 ```
+
+## How the Manifest Works
+
+Users init with `repo init -m edgefirst-imx-6.12.49-2.2.0.xml`. That manifest:
+
+1. **`<include name="base/imx-6.12.49-2.2.0.xml">`** — pulls in all NXP projects and remotes
+2. **`<extend-project name="meta-imx">`** — overrides NXP's `README.md` linkfile dest to `README-NXP.md`, and redirects `imx-setup-release.sh` to `.nxp-setup/`
+3. **`<extend-project name="fsl-community-bsp-base">`** — redirects `setup-environment` to `.nxp-setup/`
+4. **`<project name="meta-edgefirst">` / `<project name="meta-kinara">`** — our layers
+5. **`<project name="yocto">`** — self-reference: checks out this repo at `.edgefirst/` and creates symlinks for `.github/`, `README.md`, and `edgefirst-setup`
+
+The `extend-project` linkfile overrides work because a linkfile with a `dest` that already exists in the original project replaces the original (per repo manifest spec).
 
 ## Working Tree (after `repo sync`)
 
 ```
-.edgefirst/              # This manifest repo checkout
-.github → .edgefirst/.github        # Symlink (automatic)
-README.md → .edgefirst/README.md    # Symlink (automatic)
-edgefirst-setup → .edgefirst/edgefirst-setup  # Symlink (automatic)
-README-NXP.md → sources/meta-imx/README.md  # NXP readme (renamed)
-setup-environment → sources/base/setup-environment  # NXP (unused)
-imx-setup-release.sh → sources/meta-imx/tools/imx-setup-release.sh  # NXP (unused)
+.edgefirst/              # This manifest repo (EdgeFirstAI/yocto)
+.github → .edgefirst/.github
+README.md → .edgefirst/README.md
+edgefirst-setup → .edgefirst/edgefirst-setup
+README-NXP.md → sources/meta-imx/README.md
+.nxp-setup/
+  setup-environment → sources/base/setup-environment      # NXP (redirected, unused)
+  imx-setup-release.sh → sources/meta-imx/tools/imx-setup-release.sh  # NXP (redirected, unused)
 sources/
   meta-edgefirst/        # EdgeFirst perception platform layer
   meta-kinara/           # Kinara Ara-2 NPU support layer
   meta-imx/              # NXP i.MX BSP (upstream)
+  poky/                  # Yocto Project reference distribution
   ...                    # Other upstream layers
-build/                   # Single build directory
+build/                   # Single build directory (created by edgefirst-setup)
 ```
+
+## edgefirst-setup
+
+`edgefirst-setup` replaces the NXP two-script flow (`setup-environment` + `imx-setup-release.sh`). It is sourced, not executed.
+
+**First run** (`source edgefirst-setup -b build`):
+1. Sources `sources/poky/oe-init-build-env` to create the build directory
+2. Generates `local.conf`: sets `DISTRO=fsl-imx-wayland`, `PACKAGE_CLASSES=package_deb`, adds `package-management` to `EXTRA_IMAGE_FEATURES`, omits `MACHINE` (pass on command line)
+3. Copies `templates/imx/bblayers.conf` with all NXP + EdgeFirst layers
+4. Runs NXP's `machine_overrides`/`bbclass_overrides` (from `setup-utils.sh`) to remove upstream files that `meta-imx` layers override
+5. Prompts for NXP EULA acceptance
+
+**Re-entry** (`source edgefirst-setup -b build`):
+1. Sources `oe-init-build-env` (sets up bitbake in PATH)
+2. Checks EULA status
+
+Optional: `MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build` bakes the machine into `local.conf`.
 
 ## Build Configuration
 
@@ -46,34 +82,25 @@ build/                   # Single build directory
 
 ### Supported Machines
 
-| MACHINE                      | Board           |
-|------------------------------|-----------------|
-| imx8mp-lpddr4-frdm           | i.MX 8M Plus FRDM |
-| imx8mpevk                    | i.MX 8M Plus EVK  |
-| imx95-15x15-lpddr4x-frdm    | i.MX 95 FRDM      |
-| imx95-19x19-lpddr5-evk      | i.MX 95 EVK       |
+| MACHINE                      | Board              |
+|------------------------------|--------------------|
+| imx8mp-lpddr4-frdm           | i.MX 8M Plus FRDM  |
+| imx8mpevk                    | i.MX 8M Plus EVK   |
+| imx95-15x15-lpddr4x-frdm    | i.MX 95 FRDM       |
+| imx95-19x19-lpddr5-evk      | i.MX 95 EVK        |
 
-### Setup (first time)
+### Setup
 
 ```bash
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
     -b main -m edgefirst-imx-6.12.49-2.2.0.xml
 repo sync
-
-# Set up build environment (prompts for NXP EULA on first run)
 source edgefirst-setup -b build
 ```
-
-The setup script automatically:
-- Sets `DISTRO=fsl-imx-wayland` and `PACKAGE_CLASSES=package_deb`
-- Installs `bblayers.conf` with all NXP + EdgeFirst layers
-- Omits `MACHINE` from `local.conf` (pass on command line)
-- Adds `package-management` to `EXTRA_IMAGE_FEATURES`
 
 ### Building
 
 ```bash
-# Build for a specific machine
 MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full
 
 # Build SDK
@@ -91,7 +118,7 @@ source edgefirst-setup -b build
 
 ## Publishing Images and SDKs
 
-`repo-deploy.sh` uploads built images and SDKs to S3 with CloudFront distribution.
+`.github/scripts/repo-deploy.sh` uploads built images and SDKs to S3 with CloudFront distribution.
 
 - **S3 bucket:** `s3://edgefirst-repo/yocto/nxp/`
 - **Public URL:** `https://repo.edgefirst.ai/yocto/nxp/`
@@ -134,11 +161,12 @@ Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. The Ara-
 
 ## Adding Vendor Manifests
 
-To add a new vendor:
+To support a new i.MX-based vendor platform:
 
-1. Add `base/vendor-foobar.xml` (the vendor's base manifest)
-2. Create `edgefirst-vendor-foobar.xml` (overlay with `<include>` + our layers)
-3. Users init with: `repo init -m edgefirst-vendor-foobar.xml`
+1. Add the vendor's base manifest to `base/` (e.g., `base/vendor-foobar.xml`)
+2. Create `edgefirst-vendor-foobar.xml` — uses `<include>` for the base, `<extend-project>` for any overrides, and adds our layers and self-reference
+3. Add a matching `templates/vendor/bblayers.conf` if the layer set differs
+4. Users init with: `repo init -m edgefirst-vendor-foobar.xml`
 
 ## Skills Reference
 
