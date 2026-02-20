@@ -32,17 +32,18 @@ Users init with `repo init -m edgefirst-imx-6.12.49-2.2.0.xml`. That manifest:
 2. **`<extend-project name="meta-imx">`** — overrides NXP's `README.md` linkfile dest to `README-NXP.md`, and redirects `imx-setup-release.sh` to `.nxp-setup/`
 3. **`<extend-project name="fsl-community-bsp-base">`** — redirects `setup-environment` to `.nxp-setup/`
 4. **`<project name="meta-edgefirst">` / `<project name="meta-kinara">`** — our layers
-5. **`<project name="yocto">`** — self-reference: checks out this repo at `.edgefirst/` and creates symlinks for `.github/`, `README.md`, and `edgefirst-setup`
+5. **`<project name="yocto">`** — self-reference: checks out this repo at `sources/edgefirst-yocto/` and creates symlinks for `.github/`, `README.md`, and `edgefirst-setup`
 
 The `extend-project` linkfile overrides work because a linkfile with a `dest` that already exists in the original project replaces the original (per repo manifest spec).
 
 ## Working Tree (after `repo sync`)
 
 ```
-.edgefirst/              # This manifest repo (EdgeFirstAI/yocto)
-.github → .edgefirst/.github
-README.md → .edgefirst/README.md
-edgefirst-setup → .edgefirst/edgefirst-setup
+sources/
+  edgefirst-yocto/       # This manifest repo (EdgeFirstAI/yocto)
+.github → sources/edgefirst-yocto/.github
+README.md → sources/edgefirst-yocto/README.md
+edgefirst-setup → sources/edgefirst-yocto/edgefirst-setup
 README-NXP.md → sources/meta-imx/README.md
 .nxp-setup/
   setup-environment → sources/base/setup-environment      # NXP (redirected, unused)

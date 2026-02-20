@@ -20,7 +20,7 @@
   <project name="meta-kinara" remote="edgefirst" path="sources/meta-kinara" revision="main" />
 
   <!-- Manifest repo self-reference for tooling -->
-  <project name="yocto" remote="edgefirst" path=".edgefirst" revision="main">
+  <project name="yocto" remote="edgefirst" path="sources/edgefirst-yocto" revision="main">
     <linkfile src=".github" dest=".github" />
     <linkfile src="README.md" dest="README.md" />
     <linkfile src="edgefirst-setup" dest="edgefirst-setup" />

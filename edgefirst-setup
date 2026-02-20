@@ -55,10 +55,10 @@ unset edgefirst_opt
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 FSLDISTRO="${DISTRO:-fsl-imx-wayland}"
-EDGEFIRST_DIR="$CWD/.edgefirst"
+EDGEFIRST_DIR="$CWD/sources/edgefirst-yocto"
 
 if [ ! -d "$EDGEFIRST_DIR" ]; then
-    echo "ERROR: .edgefirst/ directory not found. Run 'repo sync' first."
+    echo "ERROR: sources/edgefirst-yocto/ directory not found. Run 'repo sync' first."
     edgefirst_clean_up
     return 1
 fi
