@@ -107,9 +107,8 @@ cargo build --target aarch64-unknown-linux-gnu
 
 The repo is designed to support multiple vendors:
 
-1. Add the vendor's base manifest to `base/` (e.g., `base/vendor-foobar.xml`)
-2. Create an EdgeFirst overlay manifest (e.g., `edgefirst-vendor-foobar.xml`) that `<include>`s the base and adds our layers
-3. Users init with: `repo init -m edgefirst-vendor-foobar.xml`
+1. Create a standalone manifest (e.g., `edgefirst-vendor-foobar.xml`) with the vendor's projects and our layers
+2. Users init with: `repo init -m edgefirst-vendor-foobar.xml`
 
 ## Our Layers
 

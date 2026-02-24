@@ -14,41 +14,33 @@ EdgeFirstAI/yocto/
     copilot-instructions.md       # This file (CLAUDE.md format)
     scripts/
       repo-deploy.sh              # Publish images/SDKs to S3
-  base/
-    imx-6.12.49-2.2.0.xml        # NXP base manifest (from nxp-imx/imx-manifest)
   templates/
     imx/
       bblayers.conf               # NXP layers + meta-edgefirst + meta-kinara
-  edgefirst-imx-6.12.49-2.2.0.xml  # EdgeFirst overlay manifest
+  edgefirst-imx-6.12.49-2.2.0.xml  # Standalone manifest (NXP BSP + EdgeFirst)
   edgefirst-setup                   # Build environment setup script
   README.md
 ```
 
 ## How the Manifest Works
 
-Users init with `repo init -m edgefirst-imx-6.12.49-2.2.0.xml`. That manifest:
+Users init with `repo init -m edgefirst-imx-6.12.49-2.2.0.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
 
-1. **`<include name="base/imx-6.12.49-2.2.0.xml">`** — pulls in all NXP projects and remotes
-2. **`<extend-project name="meta-imx">`** — overrides NXP's `README.md` linkfile dest to `README-NXP.md`, and redirects `imx-setup-release.sh` to `.nxp-setup/`
-3. **`<extend-project name="fsl-community-bsp-base">`** — redirects `setup-environment` to `.nxp-setup/`
-4. **`<project name="meta-edgefirst">` / `<project name="meta-kinara">`** — our layers
-5. **`<project name="yocto">`** — self-reference: checks out this repo at `sources/edgefirst-yocto/` and creates symlinks for `.github/`, `README.md`, and `edgefirst-setup`
+1. **NXP i.MX BSP projects** — all NXP project definitions for the imx-6.12.49-2.2.0 release, with NXP root linkfiles removed (`setup-environment`, `imx-setup-release.sh`). NXP `README.md` is exposed as `README-NXP.md` for reference.
+2. **`<project name="meta-edgefirst">` / `<project name="meta-kinara">`** — our layers
+3. **`<project name="yocto">`** — self-reference: checks out this repo at `sources/edgefirst-yocto/` and creates symlinks for `.github/`, `README.md`, and `edgefirst-setup`
 
-The `extend-project` linkfile overrides work because a linkfile with a `dest` that already exists in the original project replaces the original (per repo manifest spec).
+Users can either use this manifest directly, or add `meta-edgefirst` and `meta-kinara` to their own NXP manifest setup.
 
 ## Working Tree (after `repo sync`)
 
 ```
-sources/
-  edgefirst-yocto/       # This manifest repo (EdgeFirstAI/yocto)
 .github → sources/edgefirst-yocto/.github
 README.md → sources/edgefirst-yocto/README.md
-edgefirst-setup → sources/edgefirst-yocto/edgefirst-setup
 README-NXP.md → sources/meta-imx/README.md
-.nxp-setup/
-  setup-environment → sources/base/setup-environment      # NXP (redirected, unused)
-  imx-setup-release.sh → sources/meta-imx/tools/imx-setup-release.sh  # NXP (redirected, unused)
+edgefirst-setup → sources/edgefirst-yocto/edgefirst-setup
 sources/
+  edgefirst-yocto/       # This manifest repo (EdgeFirstAI/yocto)
   meta-edgefirst/        # EdgeFirst perception platform layer
   meta-kinara/           # Kinara Ara-2 NPU support layer
   meta-imx/              # NXP i.MX BSP (upstream)
@@ -160,14 +152,79 @@ EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelin
 
 Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. The Ara-2 runtime requires `KINARA_MIRROR` to be configured (NDA required). See [setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required). Builds succeed without it since the runtime is not included by default.
 
+## Iterative Development with devtool
+
+`devtool` is the standard Yocto workflow for editing recipe sources, rebuilding, and deploying to a target without modifying the layer directly.
+
+### Setup
+
+**Always source the build environment first, and always set MACHINE explicitly:**
+
+```bash
+# CRITICAL: source edgefirst-setup first, then set MACHINE on the devtool command
+cd /home/sebastien/edgefirst-yocto
+source edgefirst-setup build       # or: source edgefirst-setup -b build
+MACHINE=imx8mpevk devtool modify nnstreamer
+```
+
+If you omit `MACHINE=`, devtool fails with:
+```
+FATAL: Directory name .../build/tmp/log/cooker/${MACHINE} contains unexpanded bitbake variable
+```
+
+**Ask the user which MACHINE to use if you are unsure.** The machine determines the BSP, NPU delegate, and hardware-specific pipeline elements.
+
+### Workflow
+
+```bash
+# 1. Extract source to workspace (creates build/workspace/sources/<recipe>)
+MACHINE=imx8mpevk devtool modify <recipe>
+
+# 2. Edit source files in build/workspace/sources/<recipe>/
+#    This is a full git repo — commit your changes here
+
+# 3. Build
+MACHINE=imx8mpevk devtool build <recipe>
+
+# 4. Deploy to target over SSH
+MACHINE=imx8mpevk devtool deploy-target <recipe> <target-host>
+
+# 5. When done, finish the workspace (resets to layer recipe)
+MACHINE=imx8mpevk devtool finish <recipe> <layer-path>
+```
+
+### Important Notes
+
+- **Every devtool/bitbake command needs the build env sourced first.** If you open a new shell, re-run `source edgefirst-setup build`.
+- **devtool creates a `devtool` branch** in `build/workspace/sources/<recipe>/`. Commits on this branch are applied as patches by bitbake.
+- **Pushing changes back upstream:** The workspace git repos have `origin` pointing to the upstream GitHub repo. Commit locally, then coordinate with the user on when/where to push (branch, PR, etc.).
+- **deploy-target uses SSH.** Target hostnames are configured in the user's SSH config (e.g., `imx8mpevk-06`). Use `ssh <hostname>` to test connectivity — do not hardcode `root@`.
+- **Rebuilding dependent recipes:** If you modify a library (e.g., nnstreamer), recipes that depend on it (e.g., imx-nnstreamer-examples) may need rebuilding too.
+
+### Target Board SSH
+
+Target boards are accessed via hostname defined in the user's SSH config. Always use `ssh <hostname>` (e.g., `ssh imx8mpevk-06`), never `ssh root@<hostname>` — the SSH config handles the user. No password is needed.
+
+### Common Recipes
+
+| Recipe | Repo | Description |
+|--------|------|-------------|
+| `nnstreamer` | `EdgeFirstAI/nnstreamer` | GStreamer ML pipeline framework |
+| `imx-nnstreamer-examples` | `EdgeFirstAI/nxp-nnstreamer-examples` | YOLOv8n demo binaries |
+| `edgefirst-hal` | — | EdgeFirst HAL (quantized NMS, model metadata) |
+| `tflite-vx-delegate` | — | TFLite VeriSilicon NPU delegate |
+
+### Known Issues
+
+- **libedgefirst_hal.so.0 soname symlink:** The `edgefirst-hal` recipe may not create the soname symlink. If binaries fail with `cannot open shared object file: libedgefirst_hal.so.0`, fix on target with: `ln -sf libedgefirst_hal.so.$(bitbake-getvar -r edgefirst-hal PV --value) /usr/lib/libedgefirst_hal.so.0 && ldconfig`. The recipe should be fixed to create proper soname symlinks.
+
 ## Adding Vendor Manifests
 
 To support a new i.MX-based vendor platform:
 
-1. Add the vendor's base manifest to `base/` (e.g., `base/vendor-foobar.xml`)
-2. Create `edgefirst-vendor-foobar.xml` — uses `<include>` for the base, `<extend-project>` for any overrides, and adds our layers and self-reference
-3. Add a matching `templates/vendor/bblayers.conf` if the layer set differs
-4. Users init with: `repo init -m edgefirst-vendor-foobar.xml`
+1. Create a standalone manifest (e.g., `edgefirst-vendor-foobar.xml`) with the vendor's projects and our layers + self-reference project
+2. Add a matching `templates/vendor/bblayers.conf` if the layer set differs
+3. Users init with: `repo init -m edgefirst-vendor-foobar.xml`
 
 ## Skills Reference
 
