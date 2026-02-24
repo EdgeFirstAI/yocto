@@ -1,35 +1,48 @@
 #!/bin/sh
 # EdgeFirst Yocto Build Environment Setup
 #
-# Usage: source edgefirst-setup [-b build-dir]
+# Usage: MACHINE=<machine> source edgefirst-setup [-b build-dir]
 #
-# Environment variables (optional):
+# Environment variables:
 #   DISTRO  - Yocto distribution (default: fsl-imx-wayland)
-#   MACHINE - Target machine (optional — pass to bitbake if not set here)
+#   MACHINE - Target machine (required on first run, baked into local.conf)
 
 CWD=$(pwd)
 
-edgefirst_usage() {
+edgefirst_list_machines() {
     cat <<EOF
-
-Usage: source edgefirst-setup [-b build-dir]
-
-  -b build-dir   Build directory (default: build)
-  -h             Show this help
-
-Environment variables:
-  DISTRO   Yocto distribution (default: fsl-imx-wayland)
-  MACHINE  Target machine (optional — can pass MACHINE= to bitbake instead)
-
 Supported machines:
   imx8mp-lpddr4-frdm          i.MX 8M Plus FRDM
   imx8mpevk                   i.MX 8M Plus EVK
   imx95-15x15-lpddr4x-frdm   i.MX 95 FRDM
   imx95-19x19-lpddr5-evk     i.MX 95 EVK
+EOF
+}
+
+edgefirst_usage() {
+    cat <<EOF
+
+Usage: MACHINE=<machine> source edgefirst-setup [-b build-dir]
+
+  -b build-dir      Build directory (default: build)
+  -h                Show this help
+  --list-machines   List supported machines
+  --help            Same as -h
+
+MACHINE is required on first run and is baked into local.conf.
+On re-entry (build dir already exists), MACHINE is not required.
+
+Environment variables:
+  DISTRO   Yocto distribution (default: fsl-imx-wayland)
+  MACHINE  Target machine (required on first run)
+
+EOF
+    edgefirst_list_machines
+    cat <<EOF
 
 Examples:
-  source edgefirst-setup -b build
-  MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full
+  MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
+  bitbake imx-image-full
 EOF
 }
 
@@ -37,11 +50,21 @@ edgefirst_clean_up() {
     unset CWD BUILD_DIR EDGEFIRST_DIR FSLDISTRO
     unset EULA EULA_ACCEPTED FSL_EULA_FILE
     unset edgefirst_first_run edgefirst_generated_config
-    unset edgefirst_usage edgefirst_clean_up
+    unset edgefirst_usage edgefirst_clean_up edgefirst_list_machines
 }
 
 # ── Parse arguments ───────────────────────────────────────────────────────────
 BUILD_DIR="build"
+
+# Pre-parse long options (getopts doesn't support them)
+for edgefirst_arg do
+    case $edgefirst_arg in
+        --list-machines) edgefirst_list_machines; edgefirst_clean_up; return 0 ;;
+        --help) edgefirst_usage; edgefirst_clean_up; return 0 ;;
+    esac
+done
+unset edgefirst_arg
+
 OLD_OPTIND=$OPTIND
 while getopts "b:h" edgefirst_opt; do
     case $edgefirst_opt in
@@ -79,6 +102,19 @@ else
     edgefirst_first_run=false
 fi
 
+# ── Require MACHINE on first run ─────────────────────────────────────────────
+if [ "$edgefirst_first_run" = "true" ] && { [ -z "$MACHINE" ] || [ "$MACHINE" = "notset" ]; }; then
+    echo
+    echo "ERROR: MACHINE is required when creating a new build directory."
+    echo
+    edgefirst_list_machines
+    echo
+    echo "Example:"
+    echo "  MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm"
+    edgefirst_clean_up
+    return 1
+fi
+
 # ── Source poky's oe-init-build-env ───────────────────────────────────────────
 # This creates the build directory on first run and adds bitbake to PATH.
 # We pass a dummy MACHINE since oe-setup-builddir uses it for the template,
@@ -108,6 +144,7 @@ if [ "$edgefirst_first_run" = "true" ]; then
     cat >> conf/local.conf <<DLEOF
 
 DL_DIR ?= "\${BSPDIR}/downloads/"
+SSTATE_DIR ?= "\${BSPDIR}/sstate/"
 DLEOF
 
     # Set DISTRO and package format
@@ -115,13 +152,8 @@ DLEOF
         -e "s,PACKAGE_CLASSES ?=.*,PACKAGE_CLASSES ?= 'package_deb',g" \
         -i conf/local.conf
 
-    # MACHINE: set in local.conf if provided, otherwise remove the line
-    # so the user must pass MACHINE= on the bitbake command line
-    if [ -n "$MACHINE" ] && [ "$MACHINE" != "notset" ]; then
-        sed -e "s,MACHINE ??=.*,MACHINE ??= '$MACHINE',g" -i conf/local.conf
-    else
-        sed -e '/^MACHINE ??=/d' -i conf/local.conf
-    fi
+    # MACHINE: always set on first run (enforced above)
+    sed -e "s,MACHINE ??=.*,MACHINE ??= '$MACHINE',g" -i conf/local.conf
 
     # Enable package-management (apt on targets)
     cat >> conf/local.conf <<PKGEOF
@@ -197,16 +229,10 @@ EdgeFirst build environment configured:
 
     BUILD_DIR=$CWD/$BUILD_DIR
     DISTRO=$FSLDISTRO
-EOF
-    if [ -n "$MACHINE" ] && [ "$MACHINE" != "notset" ]; then
-        echo "    MACHINE=$MACHINE"
-    else
-        echo "    MACHINE=(not set — pass MACHINE=<machine> to bitbake)"
-    fi
-    cat <<EOF
+    MACHINE=$MACHINE
 
 You can now run:
-    MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full
+    bitbake imx-image-full
 
 To re-enter this environment:
     source edgefirst-setup -b $BUILD_DIR
@@ -215,7 +241,7 @@ else
     cat <<EOF
 
 Build environment ready: $CWD/$BUILD_DIR
-    MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full
+    bitbake imx-image-full
 EOF
 fi
 

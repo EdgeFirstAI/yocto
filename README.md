@@ -17,29 +17,31 @@ repo init -u https://github.com/EdgeFirstAI/yocto.git \
 repo sync
 
 # 2. Set up build environment (first time — prompts for NXP EULA)
-source edgefirst-setup -b build
+MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
 
 # 3. Build an image
-MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full
+bitbake imx-image-full
 ```
 
 The setup script:
 
+- Requires `MACHINE` on first run — bakes it into `local.conf`
 - Defaults to `fsl-imx-wayland` distro and `package_deb` packaging
 - Installs `bblayers.conf` with all NXP + EdgeFirst layers
-- Does not set `MACHINE` in `local.conf` — pass it on the `bitbake` command line
+- Shares `downloads/` and `sstate/` across build directories
 - Prompts for NXP EULA acceptance (one time)
+
+Use per-MACHINE build directories to avoid deb package conflicts between different platforms:
+
+```bash
+MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
+MACHINE=imx95-19x19-lpddr5-evk source edgefirst-setup -b build-imx95-evk
+```
 
 To re-enter the build environment in a new shell:
 
 ```bash
-source edgefirst-setup -b build
-```
-
-Optionally set `MACHINE` at setup time to bake it into `local.conf`:
-
-```bash
-MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build
+source edgefirst-setup -b build-imx8mp-frdm
 ```
 
 ## Supported Machines
@@ -64,7 +66,7 @@ Upload built images and SDKs to S3 with `repo-deploy.sh`:
 
 Artifacts are published to `https://repo.edgefirst.ai/yocto/nxp/`.
 
-The script auto-discovers built machines by scanning `build/tmp/deploy/images/*/` for image files.
+The script auto-discovers built machines by scanning `<build-dir>/tmp/deploy/images/*/` for image files.
 
 ```
 Usage: repo-deploy.sh [OPTIONS]
@@ -84,9 +86,9 @@ Options:
 Build and install the cross-compilation SDK:
 
 ```bash
-MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full -c populate_sdk
+bitbake imx-image-full -c populate_sdk
 
-sudo build/tmp/deploy/sdk/fsl-imx-wayland-glibc-x86_64-imx-image-full-armv8a-imx8mp-lpddr4-frdm-toolchain-*.sh \
+sudo build-imx8mp-frdm/tmp/deploy/sdk/fsl-imx-wayland-glibc-x86_64-imx-image-full-armv8a-imx8mp-lpddr4-frdm-toolchain-*.sh \
     -d /opt/fsl-imx-wayland-6.12.49-2.2.0-imx8mp-frdm -y
 ```
 

@@ -46,32 +46,34 @@ sources/
   meta-imx/              # NXP i.MX BSP (upstream)
   poky/                  # Yocto Project reference distribution
   ...                    # Other upstream layers
-build/                   # Single build directory (created by edgefirst-setup)
+build-<machine>/         # Per-MACHINE build directory (created by edgefirst-setup)
 ```
 
 ## edgefirst-setup
 
 `edgefirst-setup` replaces the NXP two-script flow (`setup-environment` + `imx-setup-release.sh`). It is sourced, not executed.
 
-**First run** (`source edgefirst-setup -b build`):
-1. Sources `sources/poky/oe-init-build-env` to create the build directory
-2. Generates `local.conf`: sets `DISTRO=fsl-imx-wayland`, `PACKAGE_CLASSES=package_deb`, adds `package-management` to `EXTRA_IMAGE_FEATURES`, omits `MACHINE` (pass on command line)
-3. Copies `templates/imx/bblayers.conf` with all NXP + EdgeFirst layers
-4. Runs NXP's `machine_overrides`/`bbclass_overrides` (from `setup-utils.sh`) to remove upstream files that `meta-imx` layers override
-5. Prompts for NXP EULA acceptance
+**MACHINE is required on first run** and is baked into `local.conf`. Use per-MACHINE build directories (e.g., `build-imx8mp-frdm`) to avoid deb package conflicts when building for multiple platforms. `downloads/` and `sstate/` are shared across build directories.
 
-**Re-entry** (`source edgefirst-setup -b build`):
+**First run** (`MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm`):
+1. Sources `sources/poky/oe-init-build-env` to create the build directory
+2. Generates `local.conf`: sets `DISTRO=fsl-imx-wayland`, `PACKAGE_CLASSES=package_deb`, `MACHINE`, adds `package-management` to `EXTRA_IMAGE_FEATURES`
+3. Sets `DL_DIR` and `SSTATE_DIR` to shared locations (`${BSPDIR}/downloads/`, `${BSPDIR}/sstate/`)
+4. Copies `templates/imx/bblayers.conf` with all NXP + EdgeFirst layers
+5. Runs NXP's `machine_overrides`/`bbclass_overrides` (from `setup-utils.sh`) to remove upstream files that `meta-imx` layers override
+6. Prompts for NXP EULA acceptance
+
+**Re-entry** (`source edgefirst-setup -b build-imx8mp-frdm`):
 1. Sources `oe-init-build-env` (sets up bitbake in PATH)
 2. Checks EULA status
-
-Optional: `MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build` bakes the machine into `local.conf`.
+3. MACHINE is not required — already baked into local.conf
 
 ## Build Configuration
 
 - **Distro:** `fsl-imx-wayland`
 - **Image:** `imx-image-full`
 - **Package format:** `package_deb` with `package-management` (apt on targets)
-- **Single build dir:** `build/` — pass `MACHINE=` on the command line
+- **Per-MACHINE build dirs:** e.g., `build-imx8mp-frdm/` — MACHINE is baked into `local.conf`
 
 ### Supported Machines
 
@@ -88,25 +90,26 @@ Optional: `MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build` bakes the
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
     -b main -m edgefirst-imx-6.12.49-2.2.0.xml
 repo sync
-source edgefirst-setup -b build
+MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
 ```
 
 ### Building
 
 ```bash
-MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full
+# MACHINE is baked into local.conf — no need to prefix commands
+bitbake imx-image-full
 
 # Build SDK
-MACHINE=imx8mp-lpddr4-frdm bitbake imx-image-full -c populate_sdk
+bitbake imx-image-full -c populate_sdk
 
 # Build a single recipe
-MACHINE=imx8mp-lpddr4-frdm bitbake edgefirst-hal
+bitbake edgefirst-hal
 ```
 
 ### Re-entering the build environment
 
 ```bash
-source edgefirst-setup -b build
+source edgefirst-setup -b build-imx8mp-frdm
 ```
 
 ## Publishing Images and SDKs
@@ -123,7 +126,7 @@ source edgefirst-setup -b build
 .github/scripts/repo-deploy.sh --version 1.2.3                   # Override version
 ```
 
-The script auto-discovers machines from `build/tmp/deploy/images/*/` by looking for `{image}-*.rootfs.wic.zst`.
+The script auto-discovers machines from `<build-dir>/tmp/deploy/images/*/` by looking for `{image}-*.rootfs.wic.zst`.
 
 ## Cross-Compilation SDK
 
@@ -131,7 +134,7 @@ SDKs install to `/opt/fsl-imx-wayland-{version}-{board}/`.
 
 ```bash
 # Install
-sudo build/tmp/deploy/sdk/fsl-imx-wayland-glibc-x86_64-imx-image-full-armv8a-imx8mp-lpddr4-frdm-toolchain-*.sh \
+sudo build-imx8mp-frdm/tmp/deploy/sdk/fsl-imx-wayland-glibc-x86_64-imx-image-full-armv8a-imx8mp-lpddr4-frdm-toolchain-*.sh \
     -d /opt/fsl-imx-wayland-6.12.49-2.2.0-imx8mp-frdm -y
 
 # Source environment
@@ -158,45 +161,41 @@ Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. The Ara-
 
 ### Setup
 
-**Always source the build environment first, and always set MACHINE explicitly:**
+**Always source the build environment first:**
 
 ```bash
-# CRITICAL: source edgefirst-setup first, then set MACHINE on the devtool command
 cd /home/sebastien/edgefirst-yocto
-source edgefirst-setup build       # or: source edgefirst-setup -b build
-MACHINE=imx8mpevk devtool modify nnstreamer
+source edgefirst-setup -b build-imx8mpevk
+devtool modify nnstreamer
 ```
 
-If you omit `MACHINE=`, devtool fails with:
-```
-FATAL: Directory name .../build/tmp/log/cooker/${MACHINE} contains unexpanded bitbake variable
-```
+MACHINE is baked into `local.conf` on first run, so no `MACHINE=` prefix is needed on devtool/bitbake commands.
 
-**Ask the user which MACHINE to use if you are unsure.** The machine determines the BSP, NPU delegate, and hardware-specific pipeline elements.
+**Ask the user which MACHINE / build directory to use if you are unsure.** The machine determines the BSP, NPU delegate, and hardware-specific pipeline elements.
 
 ### Workflow
 
 ```bash
-# 1. Extract source to workspace (creates build/workspace/sources/<recipe>)
-MACHINE=imx8mpevk devtool modify <recipe>
+# 1. Extract source to workspace (creates build-<machine>/workspace/sources/<recipe>)
+devtool modify <recipe>
 
-# 2. Edit source files in build/workspace/sources/<recipe>/
+# 2. Edit source files in build-<machine>/workspace/sources/<recipe>/
 #    This is a full git repo — commit your changes here
 
 # 3. Build
-MACHINE=imx8mpevk devtool build <recipe>
+devtool build <recipe>
 
 # 4. Deploy to target over SSH
-MACHINE=imx8mpevk devtool deploy-target <recipe> <target-host>
+devtool deploy-target <recipe> <target-host>
 
 # 5. When done, finish the workspace (resets to layer recipe)
-MACHINE=imx8mpevk devtool finish <recipe> <layer-path>
+devtool finish <recipe> <layer-path>
 ```
 
 ### Important Notes
 
-- **Every devtool/bitbake command needs the build env sourced first.** If you open a new shell, re-run `source edgefirst-setup build`.
-- **devtool creates a `devtool` branch** in `build/workspace/sources/<recipe>/`. Commits on this branch are applied as patches by bitbake.
+- **Every devtool/bitbake command needs the build env sourced first.** If you open a new shell, re-run `source edgefirst-setup -b build-<machine>`.
+- **devtool creates a `devtool` branch** in `build-<machine>/workspace/sources/<recipe>/`. Commits on this branch are applied as patches by bitbake.
 - **Pushing changes back upstream:** The workspace git repos have `origin` pointing to the upstream GitHub repo. Commit locally, then coordinate with the user on when/where to push (branch, PR, etc.).
 - **deploy-target uses SSH.** Target hostnames are configured in the user's SSH config (e.g., `imx8mpevk-06`). Use `ssh <hostname>` to test connectivity — do not hardcode `root@`.
 - **Rebuilding dependent recipes:** If you modify a library (e.g., nnstreamer), recipes that depend on it (e.g., imx-nnstreamer-examples) may need rebuilding too.
