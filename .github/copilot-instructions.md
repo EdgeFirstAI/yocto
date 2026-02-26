@@ -155,6 +155,35 @@ EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelin
 
 Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. The Ara-2 runtime requires `KINARA_MIRROR` to be configured (NDA required). See [setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required). Builds succeed without it since the runtime is not included by default.
 
+## Yocto Release Compatibility (Scarthgap + Walnascar)
+
+meta-edgefirst **must** build on both **Scarthgap** (Yocto 5.0 LTS) and **Walnascar** (Yocto 5.2). Key differences between the two releases affect how recipes are written:
+
+### UNPACKDIR / WORKDIR
+
+Walnascar introduced `UNPACKDIR` (defaults to `${WORKDIR}/sources`) and added a `do_qa_unpack` check that **fatals** when a recipe contains the raw assignment `S = "${WORKDIR}"`. Scarthgap does not define `UNPACKDIR` at all.
+
+**Rule:** Never write `S = "${WORKDIR}"` in any recipe. Use the inline Python expression:
+
+```bitbake
+S = "${@d.getVar('UNPACKDIR') or d.getVar('WORKDIR')}"
+```
+
+- **Walnascar:** `UNPACKDIR` is defined → resolves to `${WORKDIR}/sources` → QA check passes (no raw `${WORKDIR}` in S)
+- **Scarthgap:** `UNPACKDIR` is `None` → `or` falls through → resolves to `${WORKDIR}` → no QA check exists → works
+
+In `do_install` and other tasks, always reference files via `${S}` — never use `${WORKDIR}` or `${UNPACKDIR}` directly, and never use `if [ "${UNPACKDIR}" != "" ]` branching.
+
+**Do NOT** use the anonymous `python()` shim approach (`d.setVar('S', unpackdir)`) — it runs too late and the QA check still sees the raw `S = "${WORKDIR}"` assignment.
+
+### LAYERSERIES_COMPAT
+
+`LAYERSERIES_COMPAT` in meta-edgefirst must include both `scarthgap` and `walnascar` (and any future release codenames as needed).
+
+### LAYERDEPENDS
+
+`LAYERDEPENDS` must **not** include `imx-machine-learning` — it doesn't exist in Torizon/Scarthgap builds.
+
 ## Iterative Development with devtool
 
 `devtool` is the standard Yocto workflow for editing recipe sources, rebuilding, and deploying to a target without modifying the layer directly.
