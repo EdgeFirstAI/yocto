@@ -82,8 +82,10 @@
   <!--  EdgeFirst layers                                                   -->
   <!-- ================================================================== -->
 
-  <project name="meta-edgefirst" remote="edgefirst" path="sources/meta-edgefirst" revision="main" />
-  <project name="meta-kinara" remote="edgefirst" path="sources/meta-kinara" revision="main" />
+  <project name="meta-edgefirst" remote="edgefirst" path="sources/meta-edgefirst"
+           revision="c1f8bd2a8fc4b2fcd99fd5508d03cda4d19a7a67" upstream="main" />
+  <project name="meta-kinara" remote="edgefirst" path="sources/meta-kinara"
+           revision="234cb76207ef0b268ab233c148a1c617b641a169" upstream="main" />
 
   <!-- Manifest repo self-reference for tooling -->
   <project name="yocto" remote="edgefirst" path="sources/edgefirst-yocto" revision="main">
