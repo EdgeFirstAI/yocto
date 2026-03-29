@@ -5,6 +5,7 @@ This repo (`EdgeFirstAI/yocto`) contains [repo](https://gerrit.googlesource.com/
 ## Rules
 
 - Always update `README.md` and `.github/copilot-instructions.md` when making changes that affect the project setup, usage instructions, or structure. Documentation must **ALWAYS** be kept up-to-date.
+- **We own everything.** "Bug exists in another repository" is **NEVER** an acceptable conclusion. Yocto gives us access to every repository in the build — NNStreamer, edgefirst-gstreamer, edgefirst-hal, meta-edgefirst, meta-kinara, tflite-vx-delegate — and we are totally responsible for addressing **ANY** and **ALL** performance limitations or bugs in any of them. When you hit a limitation in one component (e.g., Ara-2 tensor_filter rejects DMA-BUF input), you investigate and fix that component. No shortcuts, no deference, no "that's upstream's problem."
 
 ## Repository Structure
 
@@ -245,6 +246,31 @@ Target boards are accessed via hostname defined in the user's SSH config. Always
 ### Known Issues
 
 - **libedgefirst_hal.so.0 soname symlink:** The `edgefirst-hal` recipe may not create the soname symlink. If binaries fail with `cannot open shared object file: libedgefirst_hal.so.0`, fix on target with: `ln -sf libedgefirst_hal.so.$(bitbake-getvar -r edgefirst-hal PV --value) /usr/lib/libedgefirst_hal.so.0 && ldconfig`. The recipe should be fixed to create proper soname symlinks.
+
+## Benchmarking on Target Boards
+
+### One benchmark at a time per board
+
+**NEVER run more than one benchmark concurrently on the same board.** NPU accelerators (Ara-2, VSI, Neutron) are shared resources — concurrent inference pipelines will contend for the NPU, DMA channels, memory bandwidth, and CPU, producing unreliable numbers. Always run benchmarks **sequentially** on a given board (chain with `&&` in a single SSH session).
+
+**DO run benchmarks on different boards in parallel.** Each board has its own NPU and memory subsystem, so `ssh imx8mp-frdm "benchmark1" &` and `ssh imx95-frdm "benchmark2"` is fine and saves time.
+
+The only exception is if the benchmark's explicit purpose is to measure resource contention (e.g., two pipelines sharing the NPU).
+
+### Standard benchmark parameters
+
+- Use `-H` (headless) and `-n 1800` for reproducible throughput numbers
+- Use `-v /tmp/<video>.mp4` with the same video file across all runs for comparability
+- Use full binary paths (`/opt/edgefirst/<binary>`) since they are not in `$PATH`
+- Capture output with `| tee /tmp/<board>-<pipeline>-<model>.log` to preserve results
+- For multi-model runs, chain sequentially: `ssh <board> "bench1 && echo '===SEPARATOR===' && bench2 && ..."`
+
+### Ara-2 specifics
+
+- `systemctl enable --now ara2` must be active before benchmarking
+- If Ara-2 fails with `DV_MODEL_LOAD_FAILURE code=520`, full power cycle the board (multiple cycles may be needed)
+- The `yolov8n_ara2` binary accepts any `.dvm` model via `-m`, not just YOLOv8n — the binary name is misleading
+- The `yolov8n_ara2_reference` binary provides the NNStreamer reference pipeline with per-element timing breakdown
 
 ## Adding Vendor Manifests
 

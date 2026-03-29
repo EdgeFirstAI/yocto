@@ -17,7 +17,7 @@ Deploy Yocto images and SDKs to S3.
 Options:
   --machine MACHINE   Deploy only this machine (default: all discovered)
   --image NAME        Image name (default: imx-image-full)
-  --build-dir DIR     Build directory (default: build)
+  --build-dir DIR     Explicit build directory (default: auto-discover build-*/)
   --version VER       Override version (default: auto-detect from manifest)
   --dry-run           Show what would be deployed
   --force             Upload even if checksums match
@@ -38,32 +38,46 @@ detect_version() {
         | head -1
 }
 
-# ── Machine discovery ──────────────────────────────────────────────────────────
-discover_machines() {
-    local build_dir="$1"
-    local image="$2"
-    local deploy_dir="$ROOT_DIR/$build_dir/tmp/deploy/images"
+# ── Build directory discovery ──────────────────────────────────────────────────
+# Prints "build_dir:machine" pairs, one per line.
+discover_build_machines() {
+    local image="$1"
+    shift
+    local build_dirs=("$@")
 
-    if [[ ! -d "$deploy_dir" ]]; then
-        echo "Error: deploy directory not found: $deploy_dir" >&2
-        return 1
-    fi
+    local found=()
+    for build_dir in "${build_dirs[@]}"; do
+        local deploy_dir="$ROOT_DIR/$build_dir/tmp/deploy/images"
+        [[ -d "$deploy_dir" ]] || continue
 
-    local machines=()
-    for dir in "$deploy_dir"/*/; do
-        local machine
-        machine="$(basename "$dir")"
-        if ls "$dir"/"$image"-*.rootfs.wic.zst &>/dev/null; then
-            machines+=("$machine")
-        fi
+        for dir in "$deploy_dir"/*/; do
+            local machine
+            machine="$(basename "$dir")"
+            if ls "$dir"/"$image"-*.rootfs.wic.zst &>/dev/null; then
+                found+=("$build_dir:$machine")
+            fi
+        done
     done
 
-    if [[ ${#machines[@]} -eq 0 ]]; then
-        echo "Error: no machines found with $image images in $deploy_dir" >&2
+    if [[ ${#found[@]} -eq 0 ]]; then
+        echo "Error: no machines found with $image images in: ${build_dirs[*]}" >&2
         return 1
     fi
 
-    printf '%s\n' "${machines[@]}"
+    printf '%s\n' "${found[@]}"
+}
+
+# ── Auto-discover build-* directories ─────────────────────────────────────────
+discover_build_dirs() {
+    local dirs=()
+    for d in "$ROOT_DIR"/build-*/; do
+        [[ -d "$d" ]] && dirs+=("$(basename "$d")")
+    done
+    if [[ ${#dirs[@]} -eq 0 ]]; then
+        echo "Error: no build-*/ directories found in $ROOT_DIR" >&2
+        return 1
+    fi
+    printf '%s\n' "${dirs[@]}"
 }
 
 # ── Checksum-aware upload ──────────────────────────────────────────────────────
@@ -134,7 +148,7 @@ DRY_RUN=false
 FORCE=false
 VERSION=""
 IMAGE_NAME="imx-image-full"
-BUILD_DIR="build"
+BUILD_DIR=""
 FILTER_MACHINE=""
 
 while [[ $# -gt 0 ]]; do
@@ -155,16 +169,36 @@ if [[ -z "$VERSION" ]]; then
 fi
 echo "Version: $VERSION"
 
-# Discover or filter machines
-if [[ -n "$FILTER_MACHINE" ]]; then
-    MACHINES=("$FILTER_MACHINE")
+# Resolve build directories
+if [[ -n "$BUILD_DIR" ]]; then
+    BUILD_DIRS=("$BUILD_DIR")
 else
-    mapfile -t MACHINES < <(discover_machines "$BUILD_DIR" "$IMAGE_NAME")
+    mapfile -t BUILD_DIRS < <(discover_build_dirs)
+fi
+
+# Discover build_dir:machine pairs
+mapfile -t PAIRS < <(discover_build_machines "$IMAGE_NAME" "${BUILD_DIRS[@]}")
+
+# Apply --machine filter if set
+if [[ -n "$FILTER_MACHINE" ]]; then
+    FILTERED=()
+    for pair in "${PAIRS[@]}"; do
+        if [[ "${pair#*:}" == "$FILTER_MACHINE" ]]; then
+            FILTERED+=("$pair")
+        fi
+    done
+    if [[ ${#FILTERED[@]} -eq 0 ]]; then
+        echo "Error: machine '$FILTER_MACHINE' not found in: ${BUILD_DIRS[*]}" >&2
+        exit 1
+    fi
+    PAIRS=("${FILTERED[@]}")
 fi
 
 # Deploy
-for machine in "${MACHINES[@]}"; do
-    deploy_machine "$machine" "$IMAGE_NAME" "$BUILD_DIR"
+for pair in "${PAIRS[@]}"; do
+    build_dir="${pair%%:*}"
+    machine="${pair#*:}"
+    deploy_machine "$machine" "$IMAGE_NAME" "$build_dir"
 done
 
 echo "Done."
