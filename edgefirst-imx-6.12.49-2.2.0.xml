@@ -83,7 +83,7 @@
   <!-- ================================================================== -->
 
   <project name="meta-edgefirst" remote="edgefirst" path="sources/meta-edgefirst"
-           revision="5f67fc0f3aaba54579ced2668e76acfacb15e0c0" upstream="main" />
+           revision="b3abb529852822ee3dcabfbb3e637048a42be06f" upstream="main" />
   <project name="meta-kinara" remote="edgefirst" path="sources/meta-kinara"
            revision="234cb76207ef0b268ab233c148a1c617b641a169" upstream="main" />
 
