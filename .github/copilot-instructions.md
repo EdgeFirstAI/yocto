@@ -230,6 +230,42 @@ devtool finish <recipe> <layer-path>
 - **deploy-target uses SSH.** Target hostnames are configured in the user's SSH config (e.g., `imx8mpevk-06`). Use `ssh <hostname>` to test connectivity — do not hardcode `root@`.
 - **Rebuilding dependent recipes:** If you modify a library (e.g., nnstreamer), recipes that depend on it (e.g., imx-nnstreamer-examples) may need rebuilding too.
 
+### Respect Upstream Project Instructions
+
+When `devtool modify <recipe>` checks out a project that has its own `.github/copilot-instructions.md`, **read and follow it**. That project's rules about development practices, coding conventions, skills to load, test procedures, and commit message style apply — adapted to the context that you are building via `devtool build` instead of the project's native build system. For example, if the project says "run `cargo test` before committing," you still run the tests (via devtool or directly in the workspace), even though deployment happens through `devtool deploy-target`.
+
+### Pre-Built Binary Projects (e.g., edgefirst-hal)
+
+Some EdgeFirst packages publish pre-built binaries rather than building from source in Yocto. For these packages (edgefirst-hal, edgefirst-schemas), development and testing follows a different pattern:
+
+1. **Local source checkout** — The user maintains a source checkout somewhere on the host (e.g., `~/hal/`, `~/software/hal/`). The location is per-user/per-machine — ask once per session or check memory, but do not hardcode paths in copilot-instructions.
+2. **Build using the project's own toolchain** — Follow the project's `.github/copilot-instructions.md` for build and cross-compilation instructions. Do not try to build these through devtool.
+3. **Deploy via scp for testing** — Copy the built binaries/libraries directly to the target board for testing:
+   ```bash
+   scp build/libedgefirst_hal.so <board>:/usr/lib/
+   ssh <board> ldconfig
+   ```
+4. **Update the Yocto recipe** only after the upstream project publishes a new release (new tag, new tarball with checksums).
+
+### Cross-Platform Testing with devtool
+
+When testing changes across two boards (e.g., imx8mp-frdm and imx95-frdm), each board has its own build directory with its own devtool workspace:
+
+- `build-imx8mp-frdm/workspace/sources/<recipe>/`
+- `build-imx95-frdm/workspace/sources/<recipe>/`
+
+**Do NOT cherry-pick** commits between the two workspaces. Instead, add each workspace as a git remote of the other and push/pull between them:
+
+```bash
+# In build-imx95-frdm workspace, add the imx8mp workspace as a remote
+cd build-imx95-frdm/workspace/sources/<recipe>
+git remote add imx8mp ../../../../build-imx8mp-frdm/workspace/sources/<recipe>
+git fetch imx8mp
+git merge imx8mp/devtool   # or git reset --hard imx8mp/devtool
+```
+
+Commits can be squashed before the final push to the real upstream remote. The goal is one clean history, not duplicated cherry-picks that diverge.
+
 ### Target Board SSH
 
 Target boards are accessed via hostname defined in the user's SSH config. Always use `ssh <hostname>` (e.g., `ssh imx8mpevk-06`), never `ssh root@<hostname>` — the SSH config handles the user. No password is needed.
