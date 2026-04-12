@@ -245,7 +245,7 @@ Target boards are accessed via hostname defined in the user's SSH config. Always
 
 ### Known Issues
 
-- **libedgefirst_hal.so.0 soname symlink:** The `edgefirst-hal` recipe may not create the soname symlink. If binaries fail with `cannot open shared object file: libedgefirst_hal.so.0`, fix on target with: `ln -sf libedgefirst_hal.so.$(bitbake-getvar -r edgefirst-hal PV --value) /usr/lib/libedgefirst_hal.so.0 && ldconfig`. The recipe should be fixed to create proper soname symlinks.
+None currently tracked.
 
 ## Benchmarking on Target Boards
 
@@ -260,7 +260,7 @@ The only exception is if the benchmark's explicit purpose is to measure resource
 ### Standard benchmark parameters
 
 - Use `-H` (headless) and `-n 1800` for reproducible throughput numbers
-- Use `-v /tmp/<video>.mp4` with the same video file across all runs for comparability
+- Use `-v /tmp/test_video.mp4` — the standard test video is `853889-hd_1920_1080_25fps.mp4` (H.264 High Profile 1920x1080 25fps, people visible). Download from `https://repo.edgefirst.ai/testdata/853889-hd_1920_1080_25fps.mp4` or copy from `~/models/` on the build host via `scp ~/models/853889-hd_1920_1080_25fps.mp4 <board>:/tmp/test_video.mp4`. This is on tmpfs and is wiped on reboot.
 - Use full binary paths (`/opt/edgefirst/<binary>`) since they are not in `$PATH`
 - Capture output with `| tee /tmp/<board>-<pipeline>-<model>.log` to preserve results
 - For multi-model runs, chain sequentially: `ssh <board> "bench1 && echo '===SEPARATOR===' && bench2 && ..."`
