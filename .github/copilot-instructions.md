@@ -301,3 +301,44 @@ To support a new i.MX-based vendor platform:
 | Rust | `dev-tools:rust` | Rust crate development, Cargo, cross-compilation |
 | EdgeFirst format | `edgefirst:edgefirst-format` | EdgeFirst datasets and Arrow/Polars DataFrames |
 | EdgeFirst Studio | `edgefirst:edgefirst-client` | CLI for dataset management, training |
+
+## Changelog Management
+
+The project uses a layered changelog structure:
+
+```
+edgefirst-yocto/CHANGELOG.md          # Manifest-level: layer updates, build/deploy changes
+  ↓ links to
+meta-edgefirst/CHANGELOG.md           # Layer-level: package version table + layer changes
+  ↓ links to
+github.com/EdgeFirstAI/<pkg>/blob/v<ver>/CHANGELOG.md   # Package-level: detailed changes
+```
+
+### When bumping a package version in meta-edgefirst
+
+1. Rename the recipe `.bb` file to the new version
+2. Update checksums
+3. Add/update the entry in `meta-edgefirst/CHANGELOG.md` under `[Unreleased]`:
+   - Update the package row in the version table (old → new, with link)
+   - Link format: `[CHANGELOG](https://github.com/EdgeFirstAI/<repo>/blob/v<version>/CHANGELOG.md)`
+4. If there are recipe-level changes beyond the version bump (e.g., SONAME fixes, new install steps), note them under "Layer Changes"
+
+### When preparing a release tag
+
+1. In each layer's `CHANGELOG.md`, move `[Unreleased]` entries under a versioned heading (e.g., `## v1.2 — 2026-04-XX`)
+2. Collapse intermediate version bumps — only show the final version (e.g., HAL 0.8.0 → 0.16.2, not the full chain)
+3. Update `edgefirst-yocto/CHANGELOG.md` with the layer summaries and links
+4. Commit the changelogs, then tag
+
+### Package changelog URL pattern
+
+All EdgeFirstAI packages use the same URL pattern for their changelog at a specific version tag:
+
+```
+https://github.com/EdgeFirstAI/<repo>/blob/v<version>/CHANGELOG.md
+```
+
+Examples:
+- `https://github.com/EdgeFirstAI/hal/blob/v0.16.2/CHANGELOG.md`
+- `https://github.com/EdgeFirstAI/schemas/blob/v2.2.1/CHANGELOG.md`
+- `https://github.com/EdgeFirstAI/gstreamer/blob/main/CHANGELOG.md` (use version tag once `v0.2.0` is tagged)

@@ -123,3 +123,27 @@ EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelin
 Kinara Ara-2 NPU support: kernel module, firmware, and userspace libraries.
 
 The Ara-2 runtime packages require `KINARA_MIRROR` to be configured (NDA required). See [Ara-2 Runtime setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required) for details. The Ara-2 runtime is not included in the default image, so builds will succeed without it.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
+
+Each EdgeFirst package ships its own CHANGELOG.md in its GitHub
+repository. The layer changelogs
+([meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst/blob/main/CHANGELOG.md),
+[meta-kinara](https://github.com/EdgeFirstAI/meta-kinara/blob/main/CHANGELOG.md))
+list package version changes with links to the upstream per-package
+changelogs at the pinned version tag, e.g.:
+
+```
+https://github.com/EdgeFirstAI/hal/blob/v0.16.2/CHANGELOG.md
+```
+
+When tagging a release:
+
+1. Update each layer's `CHANGELOG.md` — collapse intermediate version
+   bumps so only the final version appears (e.g., HAL 0.8.0 → 0.16.2,
+   not the full 0.8 → 0.9 → 0.13 → 0.15 → 0.16 chain)
+2. Link each package entry to its `CHANGELOG.md` at the version tag
+3. Update this repo's `CHANGELOG.md` with the layer summary
+4. Tag the manifest and layers
