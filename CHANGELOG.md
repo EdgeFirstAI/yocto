@@ -5,17 +5,18 @@ infrastructure are documented here.
 
 For per-package details, see the layer changelogs linked below.
 
-## [Unreleased] — Changes since v1.1 (2026-03-02)
+## v1.2.0 — 2026-04-16
 
 ### Layer Updates
 
-- **meta-edgefirst**: 43 commits — HAL 0.8.0 → 0.16.2, schemas 1.5.5 →
-  2.2.1, gstreamer 0.1.1 → 0.2.0, Neutron DMA-BUF zero-copy, YOLOv8n
-  segmentation binaries, shared PipelineProbes, and 11 additional
-  package updates.
-  [CHANGELOG](https://github.com/EdgeFirstAI/meta-edgefirst/blob/main/CHANGELOG.md)
-- **meta-kinara**: No changes (stable at `234cb76`).
-  [CHANGELOG](https://github.com/EdgeFirstAI/meta-kinara/blob/main/CHANGELOG.md)
+- **meta-edgefirst** v1.2.0: HAL 0.8.0 → 0.16.3, schemas 1.5.5 → 2.2.1,
+  gstreamer 0.1.1 → 0.3.0, Neutron DMA-BUF zero-copy, YOLOv8n segmentation
+  binaries with shared `PipelineProbes`, edgefirstoverlay NV12 plane offset
+  fix and auto-letterbox, plus 11 additional package updates.
+  [CHANGELOG](https://github.com/EdgeFirstAI/meta-edgefirst/blob/v1.2.0/CHANGELOG.md)
+- **meta-kinara** v1.2.0: added `edgefirst-ara2` recipe (v0.4.0) for Python
+  bindings to the Kinara Ara-2 Runtime.
+  [CHANGELOG](https://github.com/EdgeFirstAI/meta-kinara/blob/v1.2.0/CHANGELOG.md)
 
 ### Build & Deployment
 
@@ -28,12 +29,10 @@ For per-package details, see the layer changelogs linked below.
 
 ### Manifest Pinning
 
-13 manifest bumps tracking `meta-edgefirst` development. Current pins:
-
-| Layer | Commit |
-|-------|--------|
-| meta-edgefirst | `fb7f1d3` |
-| meta-kinara | `234cb76` |
+| Layer | Tag | Commit |
+|-------|-----|--------|
+| meta-edgefirst | v1.2.0 | `99358b9` |
+| meta-kinara | v1.2.0 | `8f64409` |
 
 ## v1.1 — 2026-03-02
 
