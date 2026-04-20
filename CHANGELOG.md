@@ -5,6 +5,27 @@ infrastructure are documented here.
 
 For per-package details, see the layer changelogs linked below.
 
+## v1.2.1 — 2026-04-20
+
+### Layer Updates
+
+- **meta-edgefirst** v1.2.1: HAL 0.16.3 → 0.16.4, fixed
+  `imx-nnstreamer-examples` `do_install` for devtool/Walnascar
+  compatibility.
+  [CHANGELOG](https://github.com/EdgeFirstAI/meta-edgefirst/blob/v1.2.1/CHANGELOG.md)
+
+### Build & Deployment
+
+- Rebuilt all 4 target images and SDKs with bug fixes
+- Updated SHA-256 checksums in documentation
+
+### Manifest Pinning
+
+| Layer | Tag | Commit |
+|-------|-----|--------|
+| meta-edgefirst | v1.2.1 | `a70aa31` |
+| meta-kinara | v1.2.0 | `8f64409` |
+
 ## v1.2.0 — 2026-04-16
 
 ### Layer Updates
