@@ -275,9 +275,27 @@ Target boards are accessed via hostname defined in the user's SSH config. Always
 | Recipe | Repo | Description |
 |--------|------|-------------|
 | `nnstreamer` | `EdgeFirstAI/nnstreamer` | GStreamer ML pipeline framework |
+| `edgefirst-gstreamer` | `EdgeFirstAI/gstreamer` | EdgeFirst GStreamer plugins (edgefirstoverlay, edgefirstcameraadaptor) |
 | `imx-nnstreamer-examples` | `EdgeFirstAI/nxp-nnstreamer-examples` | YOLOv8n demo binaries |
 | `edgefirst-hal` | — | EdgeFirst HAL (quantized NMS, model metadata) |
 | `tflite-vx-delegate` | — | TFLite VeriSilicon NPU delegate |
+
+### Installed Binaries
+
+The `imx-nnstreamer-examples` recipe installs three binaries to `/opt/edgefirst/`:
+
+| Binary | Description |
+|--------|-------------|
+| `yolov8n` | Unified EdgeFirst pipeline — detection + segmentation, TFLite (VX/Neutron) + Ara-2 backends |
+| `yolov8n_reference` | NNStreamer reference detection pipeline (standard NXP approach, for benchmarking) |
+| `yolov8n_ara2_reference` | NNStreamer reference detection pipeline with Ara-2 backend (for benchmarking) |
+
+The unified `yolov8n` binary auto-detects:
+- **Backend**: `.dvm` → Ara-2, `.tflite` on imx8mp → VX Delegate, `.tflite` on imx95 → Neutron
+- **Model type**: detection vs. segmentation — auto-detected from tensor shapes by `edgefirstoverlay`
+- **Camera source**: `v4l2src` on imx8mp, `libcamerasrc` on imx95
+
+Key CLI flags: `-m <model>` (required), `-p <platform>` (required), `-v <video>`, `-c <camera>`, `-H` (headless), `-n <frames>`, `-D` (detection signal callback — prints boxes/masks to console).
 
 ### Known Issues
 
@@ -305,8 +323,93 @@ The only exception is if the benchmark's explicit purpose is to measure resource
 
 - `systemctl enable --now ara2` must be active before benchmarking
 - If Ara-2 fails with `DV_MODEL_LOAD_FAILURE code=520`, full power cycle the board (multiple cycles may be needed)
-- The `yolov8n_ara2` binary accepts any `.dvm` model via `-m`, not just YOLOv8n — the binary name is misleading
+- The unified `yolov8n` binary auto-selects the Ara-2 backend when given a `.dvm` model — it handles detection and segmentation DVM models
 - The `yolov8n_ara2_reference` binary provides the NNStreamer reference pipeline with per-element timing breakdown
+
+## Remote Wayland Screenshot Setup
+
+Target boards running weston 14+ require a one-time configuration change to allow SSH-based screenshots. This is required for remote QA visual verification.
+
+### Problem
+
+`weston-screenshooter` uses the `weston_capture_v1` Wayland protocol, which is a privileged interface. By default, only clients launched by the compositor itself (via Super+S keybinding on the physical keyboard) are authorized. Running `weston-screenshooter` from SSH always fails with "unauthorized".
+
+The legacy `/dev/fb0` framebuffer approach also does not work — weston uses DRM/KMS planes directly (G2D renderer on i.MX), so fb0 is all zeros.
+
+### Fix: Enable weston --debug
+
+The `--debug` flag registers a `screenshot_allow_all()` authority that approves ALL capture requests, including from SSH sessions.
+
+Create a systemd override on the target board:
+
+```bash
+ssh <board> 'mkdir -p /etc/systemd/system/weston.service.d && cat > /etc/systemd/system/weston.service.d/debug.conf << "EOF"
+[Service]
+ExecStart=
+ExecStart=/usr/bin/weston --log=${XDG_RUNTIME_DIR}/weston.log --modules=systemd-notify.so --debug
+EOF
+systemctl daemon-reload && systemctl restart weston'
+```
+
+**Note:** The empty `ExecStart=` line is required to clear the default ExecStart before adding the new one (systemd override behavior).
+
+### Helper Script
+
+Install a `take-screenshot` helper on the board for convenient screenshot capture:
+
+```bash
+ssh <board> 'cat > /usr/local/bin/take-screenshot << "SCRIPT"
+#!/bin/sh
+export WAYLAND_DISPLAY=wayland-0
+export XDG_RUNTIME_DIR=/run/user/0
+weston-screenshooter
+LATEST=$(ls -t /root/wayland-screenshot-*.png 2>/dev/null | head -1)
+if [ -n "$LATEST" ] && [ -n "$1" ]; then
+    mv "$LATEST" "/root/$1.png"
+    echo "Screenshot saved: /root/$1.png"
+else
+    echo "Screenshot saved: $LATEST"
+fi
+SCRIPT
+chmod +x /usr/local/bin/take-screenshot'
+```
+
+Usage from the build host:
+
+```bash
+# Take a screenshot and copy to build host
+ssh <board> 'PATH=/usr/local/bin:$PATH take-screenshot mytest'
+scp <board>:/root/mytest.png /tmp/mytest.png
+```
+
+### QA Screenshot Protocol
+
+During QA testing, screenshots of video-input Wayland tests are saved to `~/wp1/screenshots/` on the build host for inclusion in the User Manual and test reports:
+
+```bash
+mkdir -p ~/wp1/screenshots
+
+# Example: capture Ara-2 segmentation with video after ~15s stabilization
+ssh <board> '/opt/edgefirst/yolov8n -m models/yolov8n-seg_640x640.dvm -p imx8mp -v 853889-hd_1920_1080_25fps.mp4' &
+sleep 15
+ssh <board> 'PATH=/usr/local/bin:$PATH take-screenshot ara2-seg-video'
+scp <board>:/root/ara2-seg-video.png ~/wp1/screenshots/
+kill %1  # stop the pipeline
+```
+
+**Screenshot naming convention:** `<backend>-<mode>-<input>-<platform>.png`
+- Examples: `ara2-seg-video-imx8mp.png`, `vx-det-video-imx8mp.png`, `neutron-seg-video-imx95.png`
+
+**Manual screenshots:** Only video-input screenshots are included in the User Manual (not camera), since camera scenes are inconsistent (e.g., pointed at ceiling). Video uses the standard test video with people visible, providing consistent expected results.
+
+**Wait times before capturing:**
+- Ara-2 backend: wait ~15 seconds (fast model load)
+- VX Delegate: wait ~40 seconds (cold-start NPU compilation takes ~26s)
+- Neutron: wait ~15 seconds
+
+### Replicating on New Boards
+
+When setting up a new board for QA testing, run both the debug.conf and take-screenshot setup commands above. This must be done once per board (persists across reboots but not reflashes).
 
 ## Manual QA Validation
 
@@ -351,10 +454,11 @@ If `ara2.service` fails to start, inform the user — may need board reboot (som
 1. **One benchmark at a time per board.** Never run concurrent benchmarks on the same board — NPU contention produces unreliable results.
 2. **Different boards in parallel is fine.** Run imx95-frdm and imx8mp-frdm tests simultaneously.
 3. **Use `-n 900 -H` for all benchmarked runs.** 900 frames at headless gives ~36 seconds of steady-state data, enough for the model to load and produce stable FPS numbers.
-4. **Add `-I` for EdgeFirst pipelines** (`yolov8n_imx8mp`, `yolov8n_imx95`) to get timing output. The `yolov8n_reference`, `yolov8n_ara2`, `yolov8n_ara2_reference`, and `yolov8n_seg_ara2` binaries always print timing at exit.
+4. **The unified `yolov8n` binary** replaces all platform/backend-specific binaries. Use `-m` to select the model and `-p` to select the platform. The `-D` flag enables detection signal output.
 5. **Capture ALL output to log files** using `2>&1 | tee /tmp/qa-<test>-<board>.log`. Never use `head`, `tail`, or `grep` to filter command output — always capture full output so it can be searched afterward.
 6. **Camera tests will have few/no detections** unless someone is standing in front of the camera. This is expected — the test validates that the pipeline runs without errors, not detection accuracy.
 7. **Video tests should produce detections** (the test video has people in it). Zero detections on video is a failure that must be investigated.
+8. **Capture Wayland screenshots** of video tests using `take-screenshot` and save to `~/wp1/screenshots/`. Only video screenshots go in the manual — camera scenes are inconsistent.
 
 ### Phase 1: Download Commands
 
@@ -383,32 +487,32 @@ ssh <board> "cd ~ && \
 
 **Pass criteria:** Every URL returns HTTP 200, every file has non-zero size. Any 404 or download failure is a blocking issue.
 
-### Phase 2: On-SoC NPU Detection (yolov8n_imx8mp / yolov8n_imx95)
+### Phase 2: On-SoC NPU Detection (yolov8n unified)
 
-Test the EdgeFirst detection pipeline on each platform. These use the on-SoC NPU (VX Delegate on imx8mp, Neutron on imx95).
+Test the EdgeFirst detection pipeline on each platform using the unified `yolov8n` binary. The binary auto-selects VX Delegate on imx8mp or Neutron on imx95 based on the `.tflite` model and `-p` flag.
 
-For each board, run 4 tests — camera + video for both EdgeFirst and reference pipelines. **Copy the exact command from the manual** and append `-n 900 -H -I` for benchmarking:
+For each board, run 4 tests — camera + video for both EdgeFirst and reference pipelines:
 
 ```bash
-# imx8mp — EdgeFirst camera
-ssh <board> "/opt/edgefirst/yolov8n_imx8mp \
+# imx8mp — EdgeFirst camera (VX Delegate)
+ssh <board> "/opt/edgefirst/yolov8n \
     -m models/yolov8n_640x640.tflite \
-    -c /dev/video3 -n 900 -H -I" 2>&1 | tee /tmp/qa-det-imx8mp-cam.log
+    -p imx8mp -c /dev/video3 -n 900 -H" 2>&1 | tee /tmp/qa-det-imx8mp-cam.log
 
-# imx8mp — EdgeFirst video
-ssh <board> "/opt/edgefirst/yolov8n_imx8mp \
+# imx8mp — EdgeFirst video (VX Delegate)
+ssh <board> "/opt/edgefirst/yolov8n \
     -m models/yolov8n_640x640.tflite \
-    -v 853889-hd_1920_1080_25fps.mp4 -n 900 -H -I" 2>&1 | tee /tmp/qa-det-imx8mp-vid.log
+    -p imx8mp -v 853889-hd_1920_1080_25fps.mp4 -n 900 -H" 2>&1 | tee /tmp/qa-det-imx8mp-vid.log
 
-# imx95 — EdgeFirst camera
-ssh <board> "/opt/edgefirst/yolov8n_imx95 \
+# imx95 — EdgeFirst camera (Neutron)
+ssh <board> "/opt/edgefirst/yolov8n \
     -m models/yolov8n_640x640.imx95.tflite \
-    -n 900 -H -I" 2>&1 | tee /tmp/qa-det-imx95-cam.log
+    -p imx95 -n 900 -H" 2>&1 | tee /tmp/qa-det-imx95-cam.log
 
-# imx95 — EdgeFirst video
-ssh <board> "/opt/edgefirst/yolov8n_imx95 \
+# imx95 — EdgeFirst video (Neutron)
+ssh <board> "/opt/edgefirst/yolov8n \
     -m models/yolov8n_640x640.imx95.tflite \
-    -v 853889-hd_1920_1080_25fps.mp4 -n 900 -H -I" 2>&1 | tee /tmp/qa-det-imx95-vid.log
+    -p imx95 -v 853889-hd_1920_1080_25fps.mp4 -n 900 -H" 2>&1 | tee /tmp/qa-det-imx95-vid.log
 ```
 
 **Reference baseline** — same commands as manual but with `-n 900 -H`:
@@ -437,18 +541,18 @@ ssh <board> "/opt/edgefirst/yolov8n_reference \
 
 **Pass criteria:** Exit code 0, timing report printed, no GStreamer errors. Video runs should show detections (>0 det/frame average).
 
-### Phase 3: Ara240 Detection (yolov8n_ara2 / yolov8n_ara2_reference)
+### Phase 3: Ara240 Detection (yolov8n unified + yolov8n_ara2_reference)
 
-Test the Ara240 NPU pipeline on both platforms:
+Test the Ara240 NPU pipeline on both platforms using the unified binary with `.dvm` models:
 
 ```bash
 # EdgeFirst Ara240 — camera (both platforms)
-ssh <board> "/opt/edgefirst/yolov8n_ara2 \
+ssh <board> "/opt/edgefirst/yolov8n \
     -m models/yolov8n_640x640.dvm \
     -p <platform> -n 900 -H" 2>&1 | tee /tmp/qa-ara2-<board>-cam.log
 
 # EdgeFirst Ara240 — video (both platforms)
-ssh <board> "/opt/edgefirst/yolov8n_ara2 \
+ssh <board> "/opt/edgefirst/yolov8n \
     -m models/yolov8n_640x640.dvm \
     -p <platform> -v 853889-hd_1920_1080_25fps.mp4 -n 900 -H" 2>&1 | tee /tmp/qa-ara2-<board>-vid.log
 
@@ -467,28 +571,56 @@ Where `<platform>` is `imx95` or `imx8mp` matching the board.
 
 **Pass criteria:** Same as Phase 2. Additionally, Ara240 EdgeFirst FPS should be significantly higher than reference (expect 2–3× for detection).
 
-### Phase 4: Segmentation (yolov8n_seg_ara2)
+### Phase 4: Segmentation (yolov8n unified with segmentation models)
 
-Test instance segmentation on both platforms with both models:
+Test instance segmentation on both platforms with both Ara-2 and TFLite backends. The unified `yolov8n` binary auto-detects segmentation models from tensor shapes:
 
 ```bash
-# YOLOv8n-seg — camera (both platforms)
-ssh <board> "/opt/edgefirst/yolov8n_seg_ara2 \
+# Ara-2 YOLOv8n-seg — camera (both platforms)
+ssh <board> "/opt/edgefirst/yolov8n \
     -m models/yolov8n-seg_640x640.dvm \
-    -p <platform> -n 900 -H" 2>&1 | tee /tmp/qa-seg-<board>-cam.log
+    -p <platform> -n 900 -H" 2>&1 | tee /tmp/qa-seg-ara2-<board>-cam.log
 
-# YOLOv8n-seg — video (both platforms)
-ssh <board> "/opt/edgefirst/yolov8n_seg_ara2 \
+# Ara-2 YOLOv8n-seg — video (both platforms)
+ssh <board> "/opt/edgefirst/yolov8n \
     -m models/yolov8n-seg_640x640.dvm \
-    -p <platform> -v 853889-hd_1920_1080_25fps.mp4 -n 900 -H" 2>&1 | tee /tmp/qa-seg-<board>-vid.log
+    -p <platform> -v 853889-hd_1920_1080_25fps.mp4 -n 900 -H" 2>&1 | tee /tmp/qa-seg-ara2-<board>-vid.log
 
-# YOLOv8m-seg — camera only (both platforms, higher accuracy model)
-ssh <board> "/opt/edgefirst/yolov8n_seg_ara2 \
+# Ara-2 YOLOv8m-seg — video (higher accuracy, both platforms)
+ssh <board> "/opt/edgefirst/yolov8n \
     -m models/yolov8m-seg_640x640.dvm \
-    -p <platform> -n 900 -H" 2>&1 | tee /tmp/qa-segm-<board>-cam.log
+    -p <platform> -v 853889-hd_1920_1080_25fps.mp4 -n 900 -H" 2>&1 | tee /tmp/qa-segm-ara2-<board>-vid.log
+
+# TFLite VX YOLOv8n-seg — video (imx8mp only)
+ssh <board> "/opt/edgefirst/yolov8n \
+    -m models/yolov8n-seg_640x640.tflite \
+    -p imx8mp -v 853889-hd_1920_1080_25fps.mp4 -n 900 -H" 2>&1 | tee /tmp/qa-seg-vx-imx8mp-vid.log
+
+# TFLite Neutron YOLOv8n-seg — video (imx95 only)
+ssh <board> "/opt/edgefirst/yolov8n \
+    -m models/yolov8n-seg_640x640.imx95.tflite \
+    -p imx95 -v 853889-hd_1920_1080_25fps.mp4 -n 900 -H" 2>&1 | tee /tmp/qa-seg-neutron-imx95-vid.log
 ```
 
 **Pass criteria:** Exit code 0, timing report printed (includes Preprocess, Inference, Draw Masks), video runs show detections. YOLOv8m-seg should be slower than YOLOv8n-seg (higher inference time) but still functional.
+
+### Phase 4b: Detection Signal Callback (-D flag)
+
+Test the detection signal output, which prints per-frame bounding boxes and mask info to the console:
+
+```bash
+# Detection signal with Ara-2 segmentation
+ssh <board> "/opt/edgefirst/yolov8n \
+    -m models/yolov8n-seg_640x640.dvm \
+    -p <platform> -v 853889-hd_1920_1080_25fps.mp4 -D -H -n 300" 2>&1 | tee /tmp/qa-signal-<board>.log
+
+# Detection signal with TFLite detection
+ssh <board> "/opt/edgefirst/yolov8n \
+    -m models/yolov8n_640x640.tflite \
+    -p imx8mp -v 853889-hd_1920_1080_25fps.mp4 -D -H -n 300" 2>&1 | tee /tmp/qa-signal-vx-<board>.log
+```
+
+**Pass criteria:** Console output shows per-frame detection lines with normalized box coordinates (values between 0.0 and 1.0), class labels, confidence scores, and mask dimensions for segmentation models.
 
 ### Phase 5: Timing Comparison
 
@@ -506,17 +638,18 @@ Key patterns to search for in logs:
 
 ### Phase 6: Report
 
-After completing all phases, compile a summary report with:
+After completing all phases, compile a summary report at `~/wp1/EDGEFIRST_TEST_REPORT-<YYYY-MM-DD>.md` with:
 
 1. **Test matrix** — table of all tests run, with PASS/FAIL status
 2. **Timing comparison** — measured vs. expected values from the manual, flagging any >15% discrepancies
-3. **Discovered issues** — any failures, crashes, or unexpected behavior, with:
+3. **Screenshots** — Wayland screenshots from video tests saved to `~/wp1/screenshots/`, referenced in the report. Only video screenshots (not camera) are used for the User Manual.
+4. **Discovered issues** — any failures, crashes, or unexpected behavior, with:
    - Exact error message
    - Which board/platform/input combination
    - Log file location
    - Suggested fix if obvious, or "needs investigation" if not
-4. **Manual corrections needed** — any commands that didn't work as written, any expected results that need updating
-5. **Questions for the user** — anything ambiguous that needs human judgment (e.g., "detection count on imx8mp video is lower than imx95 — is this a known platform difference or a bug?")
+5. **Manual corrections needed** — any commands that didn't work as written, any expected results that need updating
+6. **Questions for the user** — anything ambiguous that needs human judgment (e.g., "detection count on imx8mp video is lower than imx95 — is this a known platform difference or a bug?")
 
 **Do NOT silently fix commands that fail.** If a manual command doesn't work as-is, report it as a discrepancy. The manual must be corrected, not the test.
 
@@ -530,18 +663,20 @@ These are expected differences between platforms — do not flag as issues:
 - **imx8mp FPS is generally lower than imx95** due to different SoC generation and GPU capability.
 - **imx8mp Ara240 video may show fewer detections** than imx95 with the same video — this is due to NV12 preprocessing quality differences through the Vivante GPU path.
 - **imx8mp camera is capped at 30 FPS** by the v4l2src/ISP; imx95 camera with Ara240 can exceed 30 FPS (up to ~60 FPS).
+- **Mask offset varies by NPU speed.** Segmentation masks are rendered asynchronously — the overlay draws masks from the most recent inference result onto the current video frame. Faster NPUs (Ara-2 at ~14ms inference) produce masks that are only ~1 frame behind the video. Slower NPUs (VX Delegate at ~85ms inference) produce masks that lag several frames behind, resulting in a visible spatial offset between the mask and the person. This is expected and not a bug — it demonstrates the real-time pipeline operating without frame synchronization.
 
 ### Test Count
 
-A complete QA run covers **22 tests** across 2 boards:
+A complete QA run covers tests across 2 boards:
 
 | Phase | Tests per board | Total |
 |-------|----------------|-------|
 | Downloads | 3 command groups | 6 |
 | On-SoC detection (EdgeFirst + reference, camera + video) | 4 | 8 |
 | Ara240 detection (EdgeFirst + reference, camera + video) | 4 | 8 |
-| Segmentation (n-seg camera + video, m-seg camera) | 3 | 6 |
-| **Total** | | **28** |
+| Segmentation (Ara-2 + TFLite, camera + video) | 5 | 10 |
+| Detection signal (-D flag) | 2 | 4 |
+| **Total** | | **36** |
 
 If only one board is available, the count halves. All tests for one board can complete in ~30 minutes (tests run ~36 seconds each, plus model load overhead).
 
