@@ -83,9 +83,9 @@
   <!-- ================================================================== -->
 
   <project name="meta-edgefirst" remote="edgefirst" path="sources/meta-edgefirst"
-           revision="783639e8172f80f21c72e0fbd6fa8ecaae23bd56" upstream="main" />
+           revision="e6a1358bdb56db6679274c8b12332aa6e552e6c3" upstream="main" />
   <project name="meta-kinara" remote="edgefirst" path="sources/meta-kinara"
-           revision="8f64409dc06f99fbe49a99a1d85a17b8ba55a135" upstream="main" />
+           revision="1bed484f7e9d95ff14be95e6293e24b486d1b163" upstream="main" />
 
   <!-- Manifest repo self-reference for tooling -->
   <project name="yocto" remote="edgefirst" path="sources/edgefirst-yocto" revision="main">

@@ -5,6 +5,25 @@ infrastructure are documented here.
 
 For per-package details, see the layer changelogs linked below.
 
+## v1.2.2 — 2026-04-26
+
+### Layer Updates
+
+- **meta-edgefirst** v1.2.2: HAL 0.16.4 → 0.18.0, gstreamer 0.3.0 → 0.4.0,
+  schemas 2.2.1 → 3.1.0, videostream 2.2.2 → 2.5.1, tflite 0.4.0 → 0.5.0.
+  Unified `yolov8n` binary replaces 6 separate binaries. NNStreamer Ara-2
+  dimension fix. edgefirstoverlay Vivante proto mask regression fixed.
+  [CHANGELOG](https://github.com/EdgeFirstAI/meta-edgefirst/blob/v1.2.2/CHANGELOG.md)
+- **meta-kinara** v1.2.2: edgefirst-ara2 0.4.0 → 0.5.0.
+  [CHANGELOG](https://github.com/EdgeFirstAI/meta-kinara/blob/v1.2.2/CHANGELOG.md)
+
+### Manifest Pinning
+
+| Layer | Tag | Commit |
+|-------|-----|--------|
+| meta-edgefirst | v1.2.2 | `e6a1358` |
+| meta-kinara | v1.2.2 | `1bed484` |
+
 ## v1.2.1 — 2026-04-20
 
 ### Layer Updates
