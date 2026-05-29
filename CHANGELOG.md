@@ -27,7 +27,7 @@ For per-package details, see the layer changelogs linked below.
 | Layer | Tag | Commit |
 |-------|-----|--------|
 | meta-edgefirst | v1.2.3 | `a774b98` |
-| meta-kinara | v1.2.3 | `5620c08` |
+| meta-kinara | v1.2.3 | `b19c341` |
 
 ## v1.2.2 — 2026-04-26
 
