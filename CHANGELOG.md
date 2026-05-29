@@ -5,6 +5,30 @@ infrastructure are documented here.
 
 For per-package details, see the layer changelogs linked below.
 
+## v1.2.3 — 2026-05-28
+
+### Layer Updates
+
+- **meta-edgefirst** v1.2.3: HAL 0.18.0 → 0.24.2 (green-tint swizzle fix
+  in 0.24.2; schema-driven per-scale decoder), schemas 3.1.0 → 3.4.0
+  (PyO3 wheel), gstreamer 0.4.0 + main (schema-driven `edgefirstoverlay`
+  + per-tensor quant binding), videostream 2.5.1 → 2.5.2, tflite 0.5.0
+  → 0.7.0, camera 2.6.0 → 2.7.0, model 2.8.0 → 2.9.0 (unified
+  `rt/model/output`), recorder 1.7.1 → 1.8.0, replay 2.2.0 → 2.3.1,
+  websrv 3.8.5 → 4.0.1, webui 3.8.0 → 4.1.1, zenoh 1.8.0 → 1.9.0.
+  ConnMan removed from `imx-image-full` to stop the DNS race against
+  systemd-resolved.
+  [CHANGELOG](https://github.com/EdgeFirstAI/meta-edgefirst/blob/v1.2.3/CHANGELOG.md)
+- **meta-kinara** v1.2.3: edgefirst-ara2 0.5.0 → 0.11.2.
+  [CHANGELOG](https://github.com/EdgeFirstAI/meta-kinara/blob/v1.2.3/CHANGELOG.md)
+
+### Manifest Pinning
+
+| Layer | Tag | Commit |
+|-------|-----|--------|
+| meta-edgefirst | v1.2.3 | `a774b98` |
+| meta-kinara | v1.2.3 | `5620c08` |
+
 ## v1.2.2 — 2026-04-26
 
 ### Layer Updates
