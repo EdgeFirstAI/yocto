@@ -5,7 +5,18 @@ set -euo pipefail
 S3_BUCKET="s3://edgefirst-repo"
 S3_PREFIX="yocto/nxp"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Locate the repo-managed root by climbing until we find .repo/. This works
+# regardless of where the manifest project itself is checked out within the
+# repo tree (e.g. sources/edgefirst-yocto/.github/scripts/ under the root).
+ROOT_DIR="$SCRIPT_DIR"
+while [[ "$ROOT_DIR" != "/" && ! -d "$ROOT_DIR/.repo" ]]; do
+    ROOT_DIR="$(dirname "$ROOT_DIR")"
+done
+if [[ "$ROOT_DIR" == "/" ]]; then
+    echo "Error: cannot find a .repo/ directory above $SCRIPT_DIR" >&2
+    exit 1
+fi
 
 # ── Usage ──────────────────────────────────────────────────────────────────────
 usage() {
