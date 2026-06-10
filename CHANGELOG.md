@@ -5,6 +5,23 @@ infrastructure are documented here.
 
 For per-package details, see the layer changelogs linked below.
 
+## [Unreleased]
+
+### BSP Upgrade
+
+- New manifest `edgefirst-imx-6.18.2-1.0.0.xml` for the NXP
+  imx-6.18.2-1.0.0 BSP (Yocto 5.3 whinlatter, kernel 6.18). The
+  imx-6.12.49-2.2.0 manifest remains for reproducing v1.2.x releases.
+- whinlatter replaces the combined poky repository with split
+  bitbake / openembedded-core / meta-yocto checkouts:
+  `edgefirst-setup` now sources
+  `sources/openembedded-core/oe-init-build-env`, and the bblayers
+  template uses `openembedded-core/meta` + `meta-yocto/meta-poky`.
+- `edgefirst-setup` inserts `DISTRO` into local.conf when the template
+  provides none (openembedded-core template has no DISTRO line) and
+  explicitly enables root SSH login image features (previously inherited
+  from the poky template's debug-tweaks).
+
 ## v1.2.3 — 2026-05-28
 
 ### Layer Updates

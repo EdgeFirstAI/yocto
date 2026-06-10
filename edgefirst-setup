@@ -115,12 +115,15 @@ if [ "$edgefirst_first_run" = "true" ] && { [ -z "$MACHINE" ] || [ "$MACHINE" = 
     return 1
 fi
 
-# ── Source poky's oe-init-build-env ───────────────────────────────────────────
+# ── Source openembedded-core's oe-init-build-env ─────────────────────────────
 # This creates the build directory on first run and adds bitbake to PATH.
+# Since whinlatter the BSP ships split bitbake/openembedded-core/meta-yocto
+# repositories instead of the combined poky repo; oe-init-build-env finds
+# bitbake as the sibling sources/bitbake checkout.
 # We pass a dummy MACHINE since oe-setup-builddir uses it for the template,
 # but we regenerate local.conf ourselves.
 DISTRO=$FSLDISTRO MACHINE="${MACHINE:-notset}" \
-    . "$CWD/sources/poky/oe-init-build-env" "$CWD/$BUILD_DIR" > /dev/null
+    . "$CWD/sources/openembedded-core/oe-init-build-env" "$CWD/$BUILD_DIR" > /dev/null
 
 # After sourcing, CWD is now the build directory
 if [ ! -e conf/local.conf ]; then
@@ -152,6 +155,13 @@ DLEOF
         -e "s,PACKAGE_CLASSES ?=.*,PACKAGE_CLASSES ?= 'package_deb',g" \
         -i conf/local.conf
 
+    # openembedded-core's local.conf.sample has no DISTRO line (poky's did),
+    # so the sed above can silently match nothing and the build would run
+    # as nodistro. Insert the assignment when it is missing.
+    if ! grep -q "^DISTRO ?=" conf/local.conf; then
+        sed -e "1iDISTRO ?= '$FSLDISTRO'" -i conf/local.conf
+    fi
+
     # MACHINE: always set on first run (enforced above)
     sed -e "s,MACHINE ??=.*,MACHINE ??= '$MACHINE',g" -i conf/local.conf
 
@@ -160,6 +170,12 @@ DLEOF
 
 # Include package-management in image (apt available on targets)
 EXTRA_IMAGE_FEATURES += "package-management"
+
+# Development image: root login over SSH without password. The poky
+# template provided this via debug-tweaks; openembedded-core's template
+# does not, so state it explicitly (NXP whinlatter enables the same via
+# the root-login-with-empty-password config fragment).
+EXTRA_IMAGE_FEATURES += "allow-empty-password empty-root-password allow-root-login"
 PKGEOF
 
     # Install our bblayers.conf (NXP layers + EdgeFirst layers)
