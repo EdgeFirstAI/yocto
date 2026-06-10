@@ -155,9 +155,14 @@ DLEOF
         -e "s,PACKAGE_CLASSES ?=.*,PACKAGE_CLASSES ?= 'package_deb',g" \
         -i conf/local.conf
 
-    # openembedded-core's local.conf.sample has no DISTRO line (poky's did),
-    # so the sed above can silently match nothing and the build would run
-    # as nodistro. Insert the assignment when it is missing.
+    # openembedded-core's local.conf.sample carries DISTRO and
+    # PACKAGE_CLASSES only as comments (poky's template had real
+    # assignments), so the seds above can silently match nothing — the
+    # build would then run as nodistro with rpm packaging. Insert the
+    # assignments when missing.
+    if ! grep -q "^PACKAGE_CLASSES ?=" conf/local.conf; then
+        sed -e "1iPACKAGE_CLASSES ?= 'package_deb'" -i conf/local.conf
+    fi
     if ! grep -q "^DISTRO ?=" conf/local.conf; then
         sed -e "1iDISTRO ?= '$FSLDISTRO'" -i conf/local.conf
     fi
