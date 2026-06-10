@@ -180,17 +180,22 @@ In `do_install` and other tasks, always reference files via `${S}` — never use
 
 **Do NOT** use the anonymous `python()` shim approach (`d.setVar('S', unpackdir)`) — it runs too late and the QA check still sees the raw `S = "${WORKDIR}"` assignment.
 
-### S = ".../git" (Whinlatter)
+### S for git-fetched recipes (Whinlatter)
 
-Whinlatter's `do_qa_unpack` additionally **fatals** on the raw assignments `S = "${WORKDIR}/git"` and `S = "${UNPACKDIR}/git"` (the check compares the *unexpanded* value of `S`). bitbake.conf provides the correct default there, but kirkstone/scarthgap still need the explicit assignment for git-fetched recipes.
+Whinlatter's `do_qa_unpack` **fatals** on any unexpanded `S` containing the literal `${WORKDIR}`, including `S = "${WORKDIR}/git"` (the check inspects the *raw* value of `S`). More importantly, whinlatter sets `BB_GIT_DEFAULT_DESTSUFFIX = "${BP}"`, so git checkouts unpack to `${UNPACKDIR}/${BP}` — **not** `…/git` — and bitbake.conf's default `S = "${UNPACKDIR}/${BP}"` matches. Walnascar unpacks git to `${UNPACKDIR}/git`; kirkstone/scarthgap to `${WORKDIR}/git`.
 
-**Rule:** for git-fetched recipes use:
+**Rule:** for git-fetched recipes that must build on all supported releases use:
 
 ```bitbake
-S = "${@(d.getVar('UNPACKDIR') or d.getVar('WORKDIR')) + '/git'}"
+S = "${@(d.getVar('UNPACKDIR') + '/' + d.getVar('BB_GIT_DEFAULT_DESTSUFFIX')) if d.getVar('BB_GIT_DEFAULT_DESTSUFFIX') else ((d.getVar('UNPACKDIR') or d.getVar('WORKDIR')) + '/git')}"
 ```
 
-This yields `${UNPACKDIR}/git` on walnascar/whinlatter (the real checkout path; walnascar's `${WORKDIR}/git` compat symlink was removed in whinlatter) and `${WORKDIR}/git` on kirkstone/scarthgap, without tripping the QA literal match.
+For tarball recipes that need a custom S subdirectory, anchor it the same way (any raw `${WORKDIR}` in S is fatal on whinlatter):
+
+```bitbake
+UNPACK_BASE = "${@d.getVar('UNPACKDIR') or d.getVar('WORKDIR')}"
+S = "${UNPACK_BASE}/my-source-dir"
+```
 
 ### LAYERSERIES_COMPAT
 
