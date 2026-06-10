@@ -13,7 +13,7 @@ Yocto manifests for building EdgeFirst embedded Linux images. Currently supports
 ```bash
 # 1. Initialize and sync
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
-    -b main -m edgefirst-imx-6.12.49-2.2.0.xml
+    -b main -m edgefirst-imx-6.18.2-1.0.0.xml
 repo sync
 
 # 2. Set up build environment (first time — prompts for NXP EULA)
@@ -89,13 +89,13 @@ Build and install the cross-compilation SDK:
 bitbake imx-image-full -c populate_sdk
 
 sudo build-imx8mp-frdm/tmp/deploy/sdk/fsl-imx-wayland-glibc-x86_64-imx-image-full-armv8a-imx8mp-lpddr4-frdm-toolchain-*.sh \
-    -d /opt/fsl-imx-wayland-6.12.49-2.2.0-imx8mp-frdm -y
+    -d /opt/fsl-imx-wayland-6.18.2-1.0.0-imx8mp-frdm -y
 ```
 
 Use it:
 
 ```bash
-source /opt/fsl-imx-wayland-6.12.49-2.2.0-imx8mp-frdm/environment-setup-armv8a-poky-linux
+source /opt/fsl-imx-wayland-6.18.2-1.0.0-imx8mp-frdm/environment-setup-armv8a-poky-linux
 
 # CMake
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=$OECORE_NATIVE_SYSROOT/usr/share/cmake/OEToolchainConfig.cmake

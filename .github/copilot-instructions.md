@@ -18,16 +18,17 @@ EdgeFirstAI/yocto/
   templates/
     imx/
       bblayers.conf               # NXP layers + meta-edgefirst + meta-kinara
-  edgefirst-imx-6.12.49-2.2.0.xml  # Standalone manifest (NXP BSP + EdgeFirst)
+  edgefirst-imx-6.18.2-1.0.0.xml   # Standalone manifest (NXP BSP + EdgeFirst, current)
+  edgefirst-imx-6.12.49-2.2.0.xml  # Previous BSP manifest (reproduces v1.2.x releases)
   edgefirst-setup                   # Build environment setup script
   README.md
 ```
 
 ## How the Manifest Works
 
-Users init with `repo init -m edgefirst-imx-6.12.49-2.2.0.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
+Users init with `repo init -m edgefirst-imx-6.18.2-1.0.0.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
 
-1. **NXP i.MX BSP projects** — all NXP project definitions for the imx-6.12.49-2.2.0 release, with NXP root linkfiles removed (`setup-environment`, `imx-setup-release.sh`). NXP `README.md` is exposed as `README-NXP.md` for reference.
+1. **NXP i.MX BSP projects** — all NXP project definitions for the imx-6.18.2-1.0.0 release (imx-linux-whinlatter), with NXP root linkfiles removed (`setup-environment`, `imx-setup-release.sh`). NXP `README.md` is exposed as `README-NXP.md` for reference. Since whinlatter the Yocto Project ships as split `bitbake` / `openembedded-core` / `meta-yocto` repositories — there is no `sources/poky/`.
 2. **`<project name="meta-edgefirst">` / `<project name="meta-kinara">`** — our layers
 3. **`<project name="yocto">`** — self-reference: checks out this repo at `sources/edgefirst-yocto/` and creates symlinks for `.github/`, `README.md`, and `edgefirst-setup`
 
@@ -45,7 +46,9 @@ sources/
   meta-edgefirst/        # EdgeFirst perception platform layer
   meta-kinara/           # Kinara Ara-2 NPU support layer
   meta-imx/              # NXP i.MX BSP (upstream)
-  poky/                  # Yocto Project reference distribution
+  bitbake/               # BitBake (split from poky since whinlatter)
+  openembedded-core/     # OE-Core — provides oe-init-build-env
+  meta-yocto/            # meta-poky distro layer
   ...                    # Other upstream layers
 build-<machine>/         # Per-MACHINE build directory (created by edgefirst-setup)
 ```
@@ -57,8 +60,8 @@ build-<machine>/         # Per-MACHINE build directory (created by edgefirst-set
 **MACHINE is required on first run** and is baked into `local.conf`. Use per-MACHINE build directories (e.g., `build-imx8mp-frdm`) to avoid deb package conflicts when building for multiple platforms. `downloads/` and `sstate/` are shared across build directories.
 
 **First run** (`MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm`):
-1. Sources `sources/poky/oe-init-build-env` to create the build directory
-2. Generates `local.conf`: sets `DISTRO=fsl-imx-wayland`, `PACKAGE_CLASSES=package_deb`, `MACHINE`, adds `package-management` to `EXTRA_IMAGE_FEATURES`
+1. Sources `sources/openembedded-core/oe-init-build-env` to create the build directory (bitbake is found at the sibling `sources/bitbake`)
+2. Generates `local.conf`: sets `DISTRO=fsl-imx-wayland`, `PACKAGE_CLASSES=package_deb`, `MACHINE`, adds `package-management` and root-SSH-login features to `EXTRA_IMAGE_FEATURES`. DISTRO and PACKAGE_CLASSES are *inserted* when absent — the openembedded-core template carries them only as comments
 3. Sets `DL_DIR` and `SSTATE_DIR` to shared locations (`${BSPDIR}/downloads/`, `${BSPDIR}/sstate/`)
 4. Copies `templates/imx/bblayers.conf` with all NXP + EdgeFirst layers
 5. Runs NXP's `machine_overrides`/`bbclass_overrides` (from `setup-utils.sh`) to remove upstream files that `meta-imx` layers override
@@ -89,7 +92,7 @@ build-<machine>/         # Per-MACHINE build directory (created by edgefirst-set
 
 ```bash
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
-    -b main -m edgefirst-imx-6.12.49-2.2.0.xml
+    -b main -m edgefirst-imx-6.18.2-1.0.0.xml
 repo sync
 MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
 ```
@@ -136,10 +139,10 @@ SDKs install to `/opt/fsl-imx-wayland-{version}-{board}/`.
 ```bash
 # Install
 sudo build-imx8mp-frdm/tmp/deploy/sdk/fsl-imx-wayland-glibc-x86_64-imx-image-full-armv8a-imx8mp-lpddr4-frdm-toolchain-*.sh \
-    -d /opt/fsl-imx-wayland-6.12.49-2.2.0-imx8mp-frdm -y
+    -d /opt/fsl-imx-wayland-6.18.2-1.0.0-imx8mp-frdm -y
 
 # Source environment
-source /opt/fsl-imx-wayland-6.12.49-2.2.0-imx8mp-frdm/environment-setup-armv8a-poky-linux
+source /opt/fsl-imx-wayland-6.18.2-1.0.0-imx8mp-frdm/environment-setup-armv8a-poky-linux
 
 # CMake
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=$OECORE_NATIVE_SYSROOT/usr/share/cmake/OEToolchainConfig.cmake
@@ -156,9 +159,9 @@ EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelin
 
 Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. The Ara-2 runtime requires `KINARA_MIRROR` to be configured (NDA required). See [setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required). Builds succeed without it since the runtime is not included by default.
 
-## Yocto Release Compatibility (Scarthgap + Walnascar)
+## Yocto Release Compatibility (Scarthgap + Walnascar + Whinlatter)
 
-meta-edgefirst **must** build on both **Scarthgap** (Yocto 5.0 LTS) and **Walnascar** (Yocto 5.2). Key differences between the two releases affect how recipes are written:
+meta-edgefirst **must** build on **Scarthgap** (Yocto 5.0 LTS), **Walnascar** (Yocto 5.2), and **Whinlatter** (Yocto 5.3). Key differences between the releases affect how recipes are written:
 
 ### UNPACKDIR / WORKDIR
 
@@ -177,9 +180,21 @@ In `do_install` and other tasks, always reference files via `${S}` — never use
 
 **Do NOT** use the anonymous `python()` shim approach (`d.setVar('S', unpackdir)`) — it runs too late and the QA check still sees the raw `S = "${WORKDIR}"` assignment.
 
+### S = ".../git" (Whinlatter)
+
+Whinlatter's `do_qa_unpack` additionally **fatals** on the raw assignments `S = "${WORKDIR}/git"` and `S = "${UNPACKDIR}/git"` (the check compares the *unexpanded* value of `S`). bitbake.conf provides the correct default there, but kirkstone/scarthgap still need the explicit assignment for git-fetched recipes.
+
+**Rule:** for git-fetched recipes use:
+
+```bitbake
+S = "${@(d.getVar('UNPACKDIR') or d.getVar('WORKDIR')) + '/git'}"
+```
+
+This yields `${UNPACKDIR}/git` on walnascar/whinlatter (the real checkout path; walnascar's `${WORKDIR}/git` compat symlink was removed in whinlatter) and `${WORKDIR}/git` on kirkstone/scarthgap, without tripping the QA literal match.
+
 ### LAYERSERIES_COMPAT
 
-`LAYERSERIES_COMPAT` in meta-edgefirst must include both `scarthgap` and `walnascar` (and any future release codenames as needed).
+`LAYERSERIES_COMPAT` in meta-edgefirst must include `scarthgap`, `walnascar`, and `whinlatter` (and any future release codenames as needed).
 
 ### LAYERDEPENDS
 
