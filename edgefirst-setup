@@ -181,14 +181,14 @@ EXTRA_IMAGE_FEATURES += "package-management"
 # does not, so state it explicitly (NXP whinlatter enables the same via
 # the root-login-with-empty-password config fragment).
 EXTRA_IMAGE_FEATURES += "allow-empty-password empty-root-password allow-root-login"
-
-# crates.io rejects wget's default User-Agent with HTTP 403; identify
-# the fetcher explicitly so crate:// fetches succeed.
-FETCHCMD_wget = "/usr/bin/env wget --tries=2 --timeout=100 -U 'edgefirst-yocto-fetcher (+https://github.com/EdgeFirstAI/yocto)'"
 PKGEOF
 
     # Install our bblayers.conf (NXP layers + EdgeFirst layers)
     cp "$EDGEFIRST_DIR/templates/imx/bblayers.conf" conf/bblayers.conf
+
+    # Install site-wide build policy (parallelism caps, fetcher settings).
+    # Kept in the manifest repo so it survives build-dir recreation.
+    cp "$EDGEFIRST_DIR/templates/imx/site.conf" conf/site.conf
 
     # Apply NXP machine/bbclass overrides: remove upstream files that
     # meta-imx layers override (same mechanism as imx-setup-release.sh)
