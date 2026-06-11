@@ -92,9 +92,9 @@
   <!-- ================================================================== -->
 
   <project name="meta-edgefirst" remote="edgefirst" path="sources/meta-edgefirst"
-           revision="7a04f2131d475aa231255ac86aff13f393a0480f" upstream="main" />
+           revision="6bbef46030293e569a0175f1dcc1ad4010b8097c" upstream="main" />
   <project name="meta-kinara" remote="edgefirst" path="sources/meta-kinara"
-           revision="4c1241bdb05c61bebdd679e8ea2e3fb660722c58" upstream="main" />
+           revision="898eec9059a02cfba5b9d00067bcd5106e0cfda9" upstream="main" />
 
   <!-- Manifest repo self-reference for tooling.
        NOTE: revision is upgrade/whinlatter-6.18.2 during bring-up;
