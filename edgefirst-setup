@@ -181,6 +181,10 @@ EXTRA_IMAGE_FEATURES += "package-management"
 # does not, so state it explicitly (NXP whinlatter enables the same via
 # the root-login-with-empty-password config fragment).
 EXTRA_IMAGE_FEATURES += "allow-empty-password empty-root-password allow-root-login"
+
+# crates.io rejects wget's default User-Agent with HTTP 403; identify
+# the fetcher explicitly so crate:// fetches succeed.
+FETCHCMD_wget = "/usr/bin/env wget --tries=2 --timeout=100 -U 'edgefirst-yocto-fetcher (+https://github.com/EdgeFirstAI/yocto)'"
 PKGEOF
 
     # Install our bblayers.conf (NXP layers + EdgeFirst layers)
