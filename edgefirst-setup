@@ -178,8 +178,8 @@ EXTRA_IMAGE_FEATURES += "package-management"
 
 # Development image: root login over SSH without password. The poky
 # template provided this via debug-tweaks; openembedded-core's template
-# does not, so state it explicitly (NXP whinlatter enables the same via
-# the root-login-with-empty-password config fragment).
+# does not, so state it explicitly (NXP whinlatter/wrynose enables the
+# same via the root-login-with-empty-password config fragment).
 EXTRA_IMAGE_FEATURES += "allow-empty-password empty-root-password allow-root-login"
 PKGEOF
 

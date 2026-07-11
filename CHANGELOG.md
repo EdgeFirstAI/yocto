@@ -7,7 +7,18 @@ For per-package details, see the layer changelogs linked below.
 
 ## [Unreleased]
 
-### BSP Upgrade
+### BSP Upgrade (wrynose)
+
+- New manifest `edgefirst-imx-6.18.20-2.0.0.xml` for the NXP
+  imx-6.18.20-2.0.0 BSP (Yocto 5.4 wrynose, kernel 6.18). The
+  imx-6.18.2-1.0.0 manifest is retained as the previous BSP, and the
+  imx-6.12.49-2.2.0 manifest remains for reproducing v1.2.x releases.
+- `meta-edgefirst` and `meta-kinara` `LAYERSERIES_COMPAT` bumped to add
+  `wrynose` alongside `scarthgap`, `walnascar`, and `whinlatter`.
+- Bring-up branch `upgrade/wrynose-6.18.20` tracks this BSP across the
+  manifest and both layers until the upgrade merges to `main`.
+
+### BSP Upgrade (whinlatter)
 
 - New manifest `edgefirst-imx-6.18.2-1.0.0.xml` for the NXP
   imx-6.18.2-1.0.0 BSP (Yocto 5.3 whinlatter, kernel 6.18). The

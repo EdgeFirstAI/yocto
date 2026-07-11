@@ -18,17 +18,18 @@ EdgeFirstAI/yocto/
   templates/
     imx/
       bblayers.conf               # NXP layers + meta-edgefirst + meta-kinara
-  edgefirst-imx-6.18.2-1.0.0.xml   # Standalone manifest (NXP BSP + EdgeFirst, current)
-  edgefirst-imx-6.12.49-2.2.0.xml  # Previous BSP manifest (reproduces v1.2.x releases)
+  edgefirst-imx-6.18.20-2.0.0.xml  # Standalone manifest (NXP BSP + EdgeFirst, current)
+  edgefirst-imx-6.18.2-1.0.0.xml   # Previous BSP manifest (whinlatter)
+  edgefirst-imx-6.12.49-2.2.0.xml  # Oldest BSP manifest (reproduces v1.2.x releases)
   edgefirst-setup                   # Build environment setup script
   README.md
 ```
 
 ## How the Manifest Works
 
-Users init with `repo init -m edgefirst-imx-6.18.2-1.0.0.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
+Users init with `repo init -m edgefirst-imx-6.18.20-2.0.0.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
 
-1. **NXP i.MX BSP projects** — all NXP project definitions for the imx-6.18.2-1.0.0 release (imx-linux-whinlatter), with NXP root linkfiles removed (`setup-environment`, `imx-setup-release.sh`). NXP `README.md` is exposed as `README-NXP.md` for reference. Since whinlatter the Yocto Project ships as split `bitbake` / `openembedded-core` / `meta-yocto` repositories — there is no `sources/poky/`.
+1. **NXP i.MX BSP projects** — all NXP project definitions for the imx-6.18.20-2.0.0 release (imx-linux-wrynose), with NXP root linkfiles removed (`setup-environment`, `imx-setup-release.sh`). NXP `README.md` is exposed as `README-NXP.md` for reference. Since whinlatter the Yocto Project ships as split `bitbake` / `openembedded-core` / `meta-yocto` repositories — there is no `sources/poky/`.
 2. **`<project name="meta-edgefirst">` / `<project name="meta-kinara">`** — our layers
 3. **`<project name="yocto">`** — self-reference: checks out this repo at `sources/edgefirst-yocto/` and creates symlinks for `.github/`, `README.md`, and `edgefirst-setup`
 
@@ -92,10 +93,12 @@ build-<machine>/         # Per-MACHINE build directory (created by edgefirst-set
 
 ```bash
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
-    -b main -m edgefirst-imx-6.18.2-1.0.0.xml
+    -b upgrade/wrynose-6.18.20 -m edgefirst-imx-6.18.20-2.0.0.xml
 repo sync
 MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
 ```
+
+`-b upgrade/wrynose-6.18.20` is the current bring-up branch; it flips to `-b main` once the wrynose upgrade merges.
 
 ### Building
 
@@ -139,10 +142,10 @@ SDKs install to `/opt/fsl-imx-wayland-{version}-{board}/`.
 ```bash
 # Install
 sudo build-imx8mp-frdm/tmp/deploy/sdk/fsl-imx-wayland-glibc-x86_64-imx-image-full-armv8a-imx8mp-lpddr4-frdm-toolchain-*.sh \
-    -d /opt/fsl-imx-wayland-6.18.2-1.0.0-imx8mp-frdm -y
+    -d /opt/fsl-imx-wayland-6.18.20-2.0.0-imx8mp-frdm -y
 
 # Source environment
-source /opt/fsl-imx-wayland-6.18.2-1.0.0-imx8mp-frdm/environment-setup-armv8a-poky-linux
+source /opt/fsl-imx-wayland-6.18.20-2.0.0-imx8mp-frdm/environment-setup-armv8a-poky-linux
 
 # CMake
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=$OECORE_NATIVE_SYSROOT/usr/share/cmake/OEToolchainConfig.cmake
@@ -159,9 +162,9 @@ EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelin
 
 Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. The Ara-2 runtime requires `KINARA_MIRROR` to be configured (NDA required). See [setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required). Builds succeed without it since the runtime is not included by default.
 
-## Yocto Release Compatibility (Scarthgap + Walnascar + Whinlatter)
+## Yocto Release Compatibility (Scarthgap + Walnascar + Whinlatter + Wrynose)
 
-meta-edgefirst **must** build on **Scarthgap** (Yocto 5.0 LTS), **Walnascar** (Yocto 5.2), and **Whinlatter** (Yocto 5.3). Key differences between the releases affect how recipes are written:
+meta-edgefirst **must** build on **Scarthgap** (Yocto 5.0 LTS), **Walnascar** (Yocto 5.2), **Whinlatter** (Yocto 5.3), and **Wrynose** (Yocto 5.4). Key differences between the releases affect how recipes are written:
 
 ### UNPACKDIR / WORKDIR
 
@@ -199,7 +202,7 @@ S = "${UNPACK_BASE}/my-source-dir"
 
 ### LAYERSERIES_COMPAT
 
-`LAYERSERIES_COMPAT` in meta-edgefirst must include `scarthgap`, `walnascar`, and `whinlatter` (and any future release codenames as needed).
+`LAYERSERIES_COMPAT` in meta-edgefirst must include `scarthgap`, `walnascar`, `whinlatter`, and `wrynose` (and any future release codenames as needed).
 
 ### LAYERDEPENDS
 
