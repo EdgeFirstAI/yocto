@@ -6,12 +6,10 @@
   This is a standalone manifest for Torizon + EdgeFirst layers. Project
   definitions are pinned to the same revisions as Toradex's own
   torizon-manifest (walnascar branch) at the time this was captured, with
-  meta-edgefirst added on top. meta-kinara (Kinara Ara-2 NPU support) is
+  meta-edgefirst and meta-edgefirst-torizon (Torizon kernel/NPU patches,
+  its own repo) added on top. meta-kinara (Kinara Ara-2 NPU support) is
   intentionally NOT included — it requires a non-public Ara-2 runtime
-  mirror; see the "Known Limitations" section of README.md. The
-  meta-edgefirst-torizon hardware-patch layer (kernel/NPU patches
-  retargeted for Torizon's kernel recipe) lives alongside this manifest
-  in the repo but is a local BBLAYERS path, not a `repo` project.
+  mirror; see the "Known Limitations" section of README.md.
 -->
 <manifest>
 
@@ -55,7 +53,17 @@
   <project name="openembedded-core.git" path="sources/openembedded-core" remote="oe" revision="ff1c54df4e7b15df2e2c9fced59d9ad3e92ed565" upstream="walnascar"/>
 
   <!-- ============================================================== -->
-  <!--  EdgeFirst layer, pinned to v1.2.3 (walnascar-compatible).     -->
+  <!--  EdgeFirst layer, pinned to the edgefirst-1.2.3 branch tip     -->
+  <!--  (walnascar-compatible; a superset of the v1.2.3 tag). This    -->
+  <!--  is NOT the v1.2.3 tag itself: the tag inherits a since-fixed  -->
+  <!--  fetch bug (rolling fork branches force-pushed out from under  -->
+  <!--  its pinned SRCREVs) and still has packagegroup-edgefirst as a -->
+  <!--  single recipe with -zenoh/-gstreamer/-python subpackages,     -->
+  <!--  meaning wanting Foundation alone still built everything else. -->
+  <!--  This pin has both fixed: packagegroup-edgefirst is Foundation -->
+  <!--  only, with -gstreamer/-zenoh/-python as separate standalone   -->
+  <!--  recipes that this manifest does not install.                  -->
+  <!--                                                                 -->
   <!--  meta-kinara is intentionally NOT included: it requires a      -->
   <!--  non-public Ara-2 runtime mirror (NDA). See local.conf's       -->
   <!--  ara2 PACKAGECONFIG/ML_NNSTREAMER_PKGS override, without which -->
@@ -63,6 +71,19 @@
   <!--  fail the build looking for the missing ara2 recipe.           -->
   <!-- ============================================================== -->
 
-  <project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="00ff79f12efd1bd325e63283e756cad300fde412" upstream="v1.2.3"/>
+  <project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="722b99402cce062f8f98f50cdc1f9f824c46b989" upstream="edgefirst-1.2.3"/>
+
+  <!-- Torizon-specific hardware-enablement patches: retargets           -->
+  <!-- meta-edgefirst's NXP-named kernel patches onto Torizon's own      -->
+  <!-- linux-toradex-imx kernel recipe. Its own standalone public repo,  -->
+  <!-- same as meta-edgefirst above.                                     -->
+  <project name="meta-edgefirst-torizon" path="sources/meta-edgefirst-torizon" remote="edgefirst" revision="e541058773e44b7184c9c45a05d3511548c50eb0" upstream="main"/>
+
+  <!-- Manifest repo self-reference for tooling, pinned to the torizon  -->
+  <!-- branch (not main) so README.md/.github come from this branch.   -->
+  <project name="yocto" remote="edgefirst" path="sources/edgefirst-yocto" revision="torizon">
+    <linkfile src=".github" dest=".github" />
+    <linkfile src="README.md" dest="README.md" />
+  </project>
 
 </manifest>

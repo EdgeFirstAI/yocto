@@ -1,65 +1,23 @@
-# EdgeFirst Yocto
+# EdgeFirst Yocto — Torizon
 
-Yocto manifests for building EdgeFirst embedded Linux images. Currently supports NXP i.MX platforms, designed to extend to other vendors building i.MX-based platforms.
+Torizon with EdgeFirst for Toradex SOMs: Toradex's Torizon OS (OSTree-based, container-first, walnascar release train) with the EdgeFirst Perception Foundation layer integrated — NPU driver/firmware enablement plus the low-level HAL/video-I/O/NPU-delegate stack — for the Verdin i.MX8M Plus and Verdin i.MX95 SoMs.
+
+This is the `torizon` branch of [EdgeFirstAI/yocto](https://github.com/EdgeFirstAI/yocto). The `main` branch covers the default NXP i.MX EVK/FRDM manifests for other platforms — this branch targets Torizon on Toradex SOMs specifically; the two don't share machines, images, or build tooling.
+
+Three tiers make up the EdgeFirst-on-i.MX stack:
+
+- **NPU drivers and firmware** — kernel-level only, unavoidably part of the OS.
+- **EdgeFirst Perception Foundation** (`packagegroup-edgefirst`, a standalone recipe: `edgefirst-hal`, `videostream`, `videostream-cli`, plus the patched NPU delegates — `tim-vx`, `tflite-vx-delegate`, `tensorflow-lite-neutron-delegate`) — tightly coupled to the kernel driver, so it also belongs in the OS image. **This manifest installs driver/firmware plus this tier, and nothing above it** — `packagegroup-edgefirst-gstreamer`/`-zenoh`/`-python` are separate standalone recipes too, so installing Foundation doesn't build them.
+- **Everything above Foundation** — GStreamer/NNStreamer ML pipelines (`packagegroup-edgefirst-gstreamer`, includes the EdgeFirst `nnstreamer` fork), Zenoh perception microservices (`packagegroup-edgefirst-zenoh`: `edgefirst-camera`, `edgefirst-model`, `edgefirst-fusion`, `edgefirst-imu`, `edgefirst-navsat`, `edgefirst-radarpub`, `edgefirst-lidarpub`, `edgefirst-recorder`, `edgefirst-replay`, `edgefirst-websrv`, `edgefirst-webui`), and future ROS 2 integration — designed to run as **Dockerized** application containers under Torizon's normal Docker Compose deployment model, not baked into this OS image.
+
+Once Torizon Version 8 ships with native NPU driver/firmware integration, Dockerized EdgeFirst workloads should work out-of-the-box on stock Torizon without needing this manifest's Foundation layer at all — containers would bundle their own userspace and just need the host's native driver. Until then, this manifest provides driver/firmware plus Foundation so Dockerized perception workloads have something to build on today.
 
 ## Prerequisites
 
 - [repo tool](https://gerrit.googlesource.com/git-repo/)
 - Host packages for Yocto (see [Yocto Quick Start](https://docs.yoctoproject.org/brief-yoctoprojectqs/index.html))
-- AWS CLI (for publishing images)
 
 ## Quick Start
-
-```bash
-# 1. Initialize and sync
-repo init -u https://github.com/EdgeFirstAI/yocto.git \
-    -b main -m edgefirst-imx-6.12.49-2.2.0.xml
-repo sync
-
-# 2. Set up build environment (first time — prompts for NXP EULA)
-MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
-
-# 3. Build an image
-bitbake imx-image-full
-```
-
-The setup script:
-
-- Requires `MACHINE` on first run — bakes it into `local.conf`
-- Defaults to `fsl-imx-wayland` distro and `package_deb` packaging
-- Installs `bblayers.conf` with all NXP + EdgeFirst layers
-- Shares `downloads/` and `sstate/` across build directories
-- Prompts for NXP EULA acceptance (one time)
-
-Use per-MACHINE build directories to avoid deb package conflicts between different platforms:
-
-```bash
-MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
-MACHINE=imx95-19x19-lpddr5-evk source edgefirst-setup -b build-imx95-evk
-```
-
-To re-enter the build environment in a new shell:
-
-```bash
-source edgefirst-setup -b build-imx8mp-frdm
-```
-
-## Supported Machines
-
-| MACHINE | Board |
-|---------|-------|
-| `imx8mp-lpddr4-frdm` | i.MX 8M Plus FRDM |
-| `imx8mpevk` | i.MX 8M Plus EVK |
-| `imx95-15x15-lpddr4x-frdm` | i.MX 95 FRDM |
-| `imx95-19x19-lpddr5-evk` | i.MX 95 EVK |
-
-## Torizon (Toradex Verdin)
-
-EdgeFirst on Torizon OS (Toradex's OSTree-based distro), for the Verdin
-i.MX8M Plus and Verdin i.MX95 SoMs. Stays on Toradex's walnascar release
-train — see `edgefirst-torizon-walnascar.xml` for exact pins.
-
-### Quick Start
 
 ```bash
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
@@ -70,115 +28,29 @@ DISTRO=torizon MACHINE=verdin-imx8mp EULA=1 source setup-environment build-verdi
 bitbake torizon-minimal
 ```
 
-### Supported Machines
+To re-enter the build environment in a new shell:
+
+```bash
+source setup-environment build-verdin-imx8mp
+```
+
+## Supported Machines
 
 | MACHINE | Board |
 |---------|-------|
 | `verdin-imx8mp` | Verdin i.MX 8M Plus |
 | `verdin-imx95` | Verdin i.MX 95 |
 
-### Known Limitations
-
-`meta-kinara` (Kinara Ara-2 NPU support) is not included in this manifest.
-It requires a non-public Ara-2 runtime mirror (NDA required) — see
-[meta-kinara](https://github.com/EdgeFirstAI/meta-kinara). A version of
-meta-kinara that avoids this requirement is in progress; once available,
-this manifest will add it back. In the meantime, `local.conf` overrides
-the `ara2` PACKAGECONFIG that `meta-edgefirst` otherwise force-enables for
-`mx8mp-nxp-bsp`/`mx9-nxp-bsp`, so the build does not fail looking for the
-missing `ara2` recipe.
-
-## Publishing
-
-Upload built images and SDKs to S3 with `repo-deploy.sh`:
-
-```bash
-.github/scripts/repo-deploy.sh --dry-run                         # Preview
-.github/scripts/repo-deploy.sh                                    # Deploy all discovered machines
-.github/scripts/repo-deploy.sh --machine imx8mp-lpddr4-frdm      # Deploy one machine
-.github/scripts/repo-deploy.sh --force                            # Force re-upload
-```
-
-Artifacts are published to `https://repo.edgefirst.ai/yocto/nxp/`.
-
-The script auto-discovers built machines by scanning `<build-dir>/tmp/deploy/images/*/` for image files.
-
-```
-Usage: repo-deploy.sh [OPTIONS]
-
-Options:
-  --machine MACHINE   Deploy only this machine (default: all discovered)
-  --image NAME        Image name (default: imx-image-full)
-  --build-dir DIR     Build directory (default: build)
-  --version VER       Override version (default: auto-detect)
-  --dry-run           Show what would be deployed
-  --force             Upload even if checksums match
-  -h, --help          Show help
-```
-
-## SDK Installation
-
-Build and install the cross-compilation SDK:
-
-```bash
-bitbake imx-image-full -c populate_sdk
-
-sudo build-imx8mp-frdm/tmp/deploy/sdk/fsl-imx-wayland-glibc-x86_64-imx-image-full-armv8a-imx8mp-lpddr4-frdm-toolchain-*.sh \
-    -d /opt/fsl-imx-wayland-6.12.49-2.2.0-imx8mp-frdm -y
-```
-
-Use it:
-
-```bash
-source /opt/fsl-imx-wayland-6.12.49-2.2.0-imx8mp-frdm/environment-setup-armv8a-poky-linux
-
-# CMake
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=$OECORE_NATIVE_SYSROOT/usr/share/cmake/OEToolchainConfig.cmake
-cmake --build build
-
-# Cargo
-cargo build --target aarch64-unknown-linux-gnu
-```
-
-## Adding Vendor Manifests
-
-The repo is designed to support multiple vendors:
-
-1. Create a standalone manifest (e.g., `edgefirst-vendor-foobar.xml`) with the vendor's projects and our layers
-2. Users init with: `repo init -m edgefirst-vendor-foobar.xml`
-
 ## Our Layers
 
 ### [meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst)
 
-EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelines, NNStreamer examples, Zenoh infrastructure, and web UI.
+EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelines, NNStreamer examples, Zenoh infrastructure, and web UI. Pinned here to the `edgefirst-1.2.3` branch tip (walnascar-compatible; a superset of the `v1.2.3` tag that fixes a fetch-breaking SRCREV issue and splits `packagegroup-edgefirst` into standalone per-flavor recipes, so installing Foundation alone doesn't build the others).
 
-### [meta-kinara](https://github.com/EdgeFirstAI/meta-kinara)
+### [meta-edgefirst-torizon](https://github.com/EdgeFirstAI/meta-edgefirst-torizon)
 
-Kinara Ara-2 NPU support: kernel module, firmware, and userspace libraries.
-
-The Ara-2 runtime packages require `KINARA_MIRROR` to be configured (NDA required). See [Ara-2 Runtime setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required) for details. The Ara-2 runtime is not included in the default image, so builds will succeed without it.
+Torizon-specific hardware-enablement patches: retargets the Neutron NPU DMA-BUF kernel patch meta-edgefirst carries against NXP's raw `linux-imx` recipe onto Torizon's own `linux-toradex-imx` kernel fork, plus the Verdin i.MX95 NPU DMA reserved-memory pool size fix.
 
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
-
-Each EdgeFirst package ships its own CHANGELOG.md in its GitHub
-repository. The layer changelogs
-([meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst/blob/main/CHANGELOG.md),
-[meta-kinara](https://github.com/EdgeFirstAI/meta-kinara/blob/main/CHANGELOG.md))
-list package version changes with links to the upstream per-package
-changelogs at the pinned version tag, e.g.:
-
-```
-https://github.com/EdgeFirstAI/hal/blob/v0.16.2/CHANGELOG.md
-```
-
-When tagging a release:
-
-1. Update each layer's `CHANGELOG.md` — collapse intermediate version
-   bumps so only the final version appears (e.g., HAL 0.8.0 → 0.16.2,
-   not the full 0.8 → 0.9 → 0.13 → 0.15 → 0.16 chain)
-2. Link each package entry to its `CHANGELOG.md` at the version tag
-3. Update this repo's `CHANGELOG.md` with the layer summary
-4. Tag the manifest and layers
