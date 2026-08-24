@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EdgeFirst manifest for Torizon OS on Toradex Verdin i.MX8M Plus / i.MX95
+  — based on Toradex's walnascar (Yocto 5.2) release train.
+
+  This is a standalone manifest for Torizon + EdgeFirst layers. Project
+  definitions are pinned to the same revisions as Toradex's own
+  torizon-manifest (walnascar branch) at the time this was captured, with
+  meta-edgefirst added on top. meta-kinara (Kinara Ara-2 NPU support) is
+  intentionally NOT included — it requires a non-public Ara-2 runtime
+  mirror; see the "Known Limitations" section of README.md. The
+  meta-edgefirst-torizon hardware-patch layer (kernel/NPU patches
+  retargeted for Torizon's kernel recipe) lives alongside this manifest
+  in the repo but is a local BBLAYERS path, not a `repo` project.
+-->
+<manifest>
+
+  <remote name="githf"   fetch="https://github.com/Freescale"/>
+  <remote name="iris"    fetch="https://github.com/iris-GmbH"/>
+  <remote name="nxp"     fetch="https://github.com/nxp-imx"/>
+  <remote name="oe"      fetch="https://github.com/openembedded"/>
+  <remote name="tdx"     fetch="https://git.toradex.com"/>
+  <remote name="toradex" fetch="https://github.com/toradex"/>
+  <remote name="torizon" fetch="https://github.com/torizon"/>
+  <remote name="uptane"  fetch="https://github.com/uptane"/>
+  <remote name="yocto"   fetch="https://git.yoctoproject.org"/>
+  <remote name="edgefirst" fetch="https://github.com/EdgeFirstAI"/>
+
+  <default sync-j="4"/>
+
+  <!-- ============================================================== -->
+  <!--  Torizon walnascar projects (pinned from torizon-walnascar's   -->
+  <!--  resolved manifest — see .claude/plans NOTES.md for capture)   -->
+  <!-- ============================================================== -->
+
+  <project name="bitbake.git" path="sources/openembedded-core/bitbake" remote="oe" revision="ac097300921590ed6a814f2c3fa08a59f4ded92d" upstream="2.12"/>
+  <project name="meta-arm" path="sources/meta-arm" remote="yocto" revision="b68089f2648d712b9406d0e88c71758913267f81" upstream="walnascar"/>
+  <project name="meta-cyclonedx" path="sources/meta-cyclonedx" remote="iris" revision="71e57f8203fd612d1f98396555af5c658847c6b9"/>
+  <project name="meta-freescale-3rdparty.git" path="sources/meta-freescale-3rdparty" remote="githf" revision="5ba0c7cfdba9bc7c4495f0cdf1c195f45b7164a6" upstream="walnascar"/>
+  <project name="meta-freescale-distro.git" path="sources/meta-freescale-distro" remote="githf" revision="b9c3536b68271c420fe5de36fc284781ceaa32ab" upstream="walnascar"/>
+  <project name="meta-freescale-ml" path="sources/meta-freescale-ml" remote="githf" revision="b364d313706d247fadf12feb68136559d7ff3d52"/>
+  <project name="meta-freescale.git" path="sources/meta-freescale" remote="githf" revision="7815951fa743abaaccbcfd0377b377c399aa23e6" upstream="walnascar"/>
+  <project name="meta-imx" path="sources/meta-imx" remote="nxp" revision="1cfbbb8f9ce1d6071775ea6083b79d98597c8206"/>
+  <project name="meta-openembedded.git" path="sources/meta-openembedded" remote="oe" revision="07330a98cf93806b7a4e0170a541b94962ff3960" upstream="walnascar"/>
+  <project name="meta-security" path="sources/meta-security" remote="yocto" revision="1f7eeb8e84811fa79b98f236ade42dc52d44cfc6"/>
+  <project name="meta-toradex-bsp-common.git" path="sources/meta-toradex-bsp-common" remote="tdx" revision="bb709f871bce72b5c24fae12795d8df872f88867" upstream="walnascar"/>
+  <project name="meta-toradex-distro.git" path="sources/meta-toradex-distro" remote="tdx" revision="24b76ddb1150a28ad49faf7a997bfe317e150276"/>
+  <project name="meta-toradex-nxp.git" path="sources/meta-toradex-nxp" remote="tdx" revision="050ac6e6848217a99500a974f0e49cc1d9344c79" upstream="walnascar"/>
+  <project name="meta-toradex-torizon" path="sources/meta-toradex-torizon" remote="torizon" revision="d0ec1521e17f8d088c4dfd50a17f110155b42a65">
+    <linkfile src="scripts/setup-environment" dest="setup-environment"/>
+  </project>
+  <project name="meta-updater" path="sources/meta-updater" remote="uptane" revision="b277f444f66e8f10eb725a14b5bcceb47dfeb445"/>
+  <project name="meta-virtualization" path="sources/meta-virtualization" remote="yocto" revision="38008d99d5bedc7d9769b9e95e3d6019a2df1698"/>
+  <project name="meta-yocto" path="sources/meta-yocto" remote="yocto" revision="0993c45a1f78f302fd40c78a2a1f709daa7a0ae0" upstream="walnascar"/>
+  <project name="openembedded-core.git" path="sources/openembedded-core" remote="oe" revision="ff1c54df4e7b15df2e2c9fced59d9ad3e92ed565" upstream="walnascar"/>
+
+  <!-- ============================================================== -->
+  <!--  EdgeFirst layer, pinned to v1.2.3 (walnascar-compatible).     -->
+  <!--  meta-kinara is intentionally NOT included: it requires a      -->
+  <!--  non-public Ara-2 runtime mirror (NDA). See local.conf's       -->
+  <!--  ara2 PACKAGECONFIG/ML_NNSTREAMER_PKGS override, without which -->
+  <!--  meta-edgefirst's nnstreamer/packagegroup-imx-ml bbappends     -->
+  <!--  fail the build looking for the missing ara2 recipe.           -->
+  <!-- ============================================================== -->
+
+  <project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="00ff79f12efd1bd325e63283e756cad300fde412" upstream="v1.2.3"/>
+
+</manifest>

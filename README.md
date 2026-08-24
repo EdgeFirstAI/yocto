@@ -53,6 +53,41 @@ source edgefirst-setup -b build-imx8mp-frdm
 | `imx95-15x15-lpddr4x-frdm` | i.MX 95 FRDM |
 | `imx95-19x19-lpddr5-evk` | i.MX 95 EVK |
 
+## Torizon (Toradex Verdin)
+
+EdgeFirst on Torizon OS (Toradex's OSTree-based distro), for the Verdin
+i.MX8M Plus and Verdin i.MX95 SoMs. Stays on Toradex's walnascar release
+train — see `edgefirst-torizon-walnascar.xml` for exact pins.
+
+### Quick Start
+
+```bash
+repo init -u https://github.com/EdgeFirstAI/yocto.git \
+    -b torizon -m edgefirst-torizon-walnascar.xml
+repo sync
+
+DISTRO=torizon MACHINE=verdin-imx8mp EULA=1 source setup-environment build-verdin-imx8mp
+bitbake torizon-minimal
+```
+
+### Supported Machines
+
+| MACHINE | Board |
+|---------|-------|
+| `verdin-imx8mp` | Verdin i.MX 8M Plus |
+| `verdin-imx95` | Verdin i.MX 95 |
+
+### Known Limitations
+
+`meta-kinara` (Kinara Ara-2 NPU support) is not included in this manifest.
+It requires a non-public Ara-2 runtime mirror (NDA required) — see
+[meta-kinara](https://github.com/EdgeFirstAI/meta-kinara). A version of
+meta-kinara that avoids this requirement is in progress; once available,
+this manifest will add it back. In the meantime, `local.conf` overrides
+the `ara2` PACKAGECONFIG that `meta-edgefirst` otherwise force-enables for
+`mx8mp-nxp-bsp`/`mx9-nxp-bsp`, so the build does not fail looking for the
+missing `ara2` recipe.
+
 ## Publishing
 
 Upload built images and SDKs to S3 with `repo-deploy.sh`:
