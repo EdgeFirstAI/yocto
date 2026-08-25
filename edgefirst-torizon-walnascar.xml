@@ -77,7 +77,7 @@
   <!-- meta-edgefirst's NXP-named kernel patches onto Torizon's own      -->
   <!-- linux-toradex-imx kernel recipe. Its own standalone public repo,  -->
   <!-- same as meta-edgefirst above.                                     -->
-  <project name="meta-edgefirst-torizon" path="layers/meta-edgefirst-torizon" remote="edgefirst" revision="ba29f5cf82e1d3393fdb4904a58b4f98c5b8f303" upstream="main"/>
+  <project name="meta-edgefirst-torizon" path="layers/meta-edgefirst-torizon" remote="edgefirst" revision="b9660d0dbb5449ff3303f486e66a70166416c36f" upstream="main"/>
 
   <!-- Manifest repo self-reference for tooling, pinned to the torizon  -->
   <!-- branch (not main) so README.md/.github come from this branch.   -->
