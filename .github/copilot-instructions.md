@@ -150,7 +150,7 @@ Torizon-specific hardware-enablement patches. Its own standalone public repo, sa
 
 **Why it exists:** meta-edgefirst's own kernel bbappend (`recipes-kernel/linux/linux-imx_%.bbappend`) targets NXP's raw `linux-imx` recipe name. Torizon does not use that recipe — the actual kernel recipe here is `linux-toradex-imx` (Toradex's own downstream fork). A bbappend targeting the wrong recipe name is not an error, it just silently never applies. `meta-edgefirst-torizon`'s `linux-toradex-imx_%.bbappend` carries the same patches meta-edgefirst applies for the NXP flavor, retargeted onto the correct recipe name:
 
-- `0001-npu-dma-512m.patch` — enlarges the Verdin i.MX95 Neutron NPU's CMA reserved-memory pool from 128 MiB to 512 MiB.
+- `0001-npu-dma-512m.patch` — enlarges the Verdin i.MX95 Neutron NPU's CMA reserved-memory pool from 128 MiB to 512 MiB. **Currently disabled** (present in the layer, not referenced in `SRC_URI`) — the `torizon-kernel-meta` pin needed for `verdin-imx95`'s kernel-config feature file restructured how the Neutron NPU's memory-region is declared, and the `npu_dma` devicetree node this patch targets no longer exists; re-deriving it against the new `.dtso` overlay model is follow-up work.
 - `0001-staging-neutron-export-buffers-as-dma-buf.patch` — Neutron NPU DMA-BUF export support (zero-copy V4L2/GStreamer/GPU sharing), copied byte-exact from meta-edgefirst's own patch file.
 
 Both are scoped `SRC_URI:append:verdin-imx95` — i.MX8M Plus doesn't have the Neutron NPU or the DT node these patch, and `linux-toradex-imx` is shared across both machines' `COMPATIBLE_MACHINE`.
