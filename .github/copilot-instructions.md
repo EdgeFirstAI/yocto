@@ -24,19 +24,19 @@ EdgeFirstAI/yocto/ (torizon branch)
 
 Users init with `repo init -u https://github.com/EdgeFirstAI/yocto.git -b torizon -m edgefirst-torizon-walnascar.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
 
-1. **Torizon walnascar projects** — every project Toradex's own `torizon-manifest` (walnascar branch) pins, captured via `repo manifest -r` against a known-working Torizon build and transcribed with paths changed from `layers/<name>` to `sources/<name>`. Never bump these off their walnascar-pinned revisions without deliberately re-validating the whole stack — walnascar is the only OE-core/Yocto release train Toradex has released Torizon against; NXP's newer BSP trains (whinlatter, wrynose) are NOT compatible with these Toradex layers.
+1. **Torizon walnascar projects** — every project Toradex's own `torizon-manifest` (walnascar branch) pins, captured via `repo manifest -r` against a known-working Torizon build, at `path="layers/<name>"` — the same convention `torizon-manifest` itself uses. This is deliberate, not incidental: `meta-toradex-torizon`'s own `setup-environment` script has a stock `bblayers.conf` template with `${OEROOT}/layers/...` hardcoded (not configurable), and its regeneration-skip checksum logic only works correctly when the tree actually matches that layout. An earlier version of this manifest used `sources/<name>` (matching the NXP-flavor manifests on `main`, which use EdgeFirst's own `edgefirst-setup` script instead) — that broke `setup-environment`'s auto-generation outright (every path resolution failed against a nonexistent `layers/` tree). Never bump these off their walnascar-pinned revisions without deliberately re-validating the whole stack — walnascar is the only OE-core/Yocto release train Toradex has released Torizon against; NXP's newer BSP trains (whinlatter, wrynose) are NOT compatible with these Toradex layers.
 2. **`<project name="meta-edgefirst">`** — pinned to the `edgefirst-1.2.3` branch tip (a fixed point, a superset of the `v1.2.3` tag — see "Our Layers" below for why the tag itself isn't used), not floating `main`, so this manifest doesn't drift when meta-edgefirst's `main` branch gets bring-up work for other BSP trains.
 3. **`<project name="meta-edgefirst-torizon">`** — pinned to a commit on `main` of its own repo, [EdgeFirstAI/meta-edgefirst-torizon](https://github.com/EdgeFirstAI/meta-edgefirst-torizon) — see "Our Layers" below.
-4. **`<project name="yocto">`** — self-reference: checks out this repo at `sources/edgefirst-yocto/`, pinned to the `torizon` branch (not `main`), and creates symlinks for `.github/` and `README.md`.
+4. **`<project name="yocto">`** — self-reference: checks out this repo at `layers/edgefirst-yocto/`, pinned to the `torizon` branch (not `main`), and creates symlinks for `.github/` and `README.md`.
 
 `meta-kinara` (Kinara Ara-2 NPU support) is intentionally not in this manifest — see "meta-kinara" below.
 
 ## Working Tree (after `repo sync`)
 
 ```
-.github → sources/edgefirst-yocto/.github
-README.md → sources/edgefirst-yocto/README.md
-sources/
+.github → layers/edgefirst-yocto/.github
+README.md → layers/edgefirst-yocto/README.md
+layers/
   edgefirst-yocto/          # This manifest repo (EdgeFirstAI/yocto, torizon branch)
   meta-edgefirst/           # EdgeFirst perception platform layer
   meta-edgefirst-torizon/   # Torizon-specific hardware-enablement layer, its own repo
@@ -146,7 +146,7 @@ Pinned here to `722b99402cce062f8f98f50cdc1f9f824c46b989` on the `edgefirst-1.2.
 
 ### [meta-edgefirst-torizon](https://github.com/EdgeFirstAI/meta-edgefirst-torizon)
 
-Torizon-specific hardware-enablement patches. Its own standalone public repo, same as `meta-edgefirst` above — referenced by this manifest as a `repo` project (`path="sources/meta-edgefirst-torizon"`), pinned to a commit on its `main` branch.
+Torizon-specific hardware-enablement patches. Its own standalone public repo, same as `meta-edgefirst` above — referenced by this manifest as a `repo` project (`path="layers/meta-edgefirst-torizon"`), pinned to a commit on its `main` branch.
 
 **Why it exists:** meta-edgefirst's own kernel bbappend (`recipes-kernel/linux/linux-imx_%.bbappend`) targets NXP's raw `linux-imx` recipe name. Torizon does not use that recipe — the actual kernel recipe here is `linux-toradex-imx` (Toradex's own downstream fork). A bbappend targeting the wrong recipe name is not an error, it just silently never applies. `meta-edgefirst-torizon`'s `linux-toradex-imx_%.bbappend` carries the same patches meta-edgefirst applies for the NXP flavor, retargeted onto the correct recipe name:
 
