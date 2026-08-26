@@ -84,6 +84,7 @@
   <project name="yocto" remote="edgefirst" path="layers/edgefirst-yocto" revision="torizon">
     <linkfile src=".github" dest=".github" />
     <linkfile src="README.md" dest="README.md" />
+    <linkfile src="scripts/publish-repo.sh" dest="publish-repo.sh" />
   </project>
 
 </manifest>
