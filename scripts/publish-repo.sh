@@ -24,7 +24,9 @@
 #      deltas.
 #   2. pull-local the build's OSTree commit into that staging repo
 #   3. commit it onto a per-machine/channel branch with version metadata
-#   4. generate a static delta, update the repo summary
+#   4. generate a static delta (skipped on a branch's first-ever publish,
+#      since there's no prior commit yet to delta against), update the
+#      repo summary
 #   5. sync the staging repo to the ostree/ prefix of the target bucket
 #      (additive: no --delete — ostree's object store is content-addressed
 #      and old objects are still referenced by history/deltas)
@@ -207,13 +209,23 @@ EOF
         fi
     fi
 
+    # static-delta generate needs a prior commit on this branch to diff
+    # against; capture whether one exists before we add ours, so a branch's
+    # first-ever publish doesn't fail on "commit has no parent".
+    local had_prior_commit=1
+    ostree --repo="$OSTREE_STAGING_REPO" rev-parse "$OSTREE_PUBLISH_BRANCH" >/dev/null 2>&1 || had_prior_commit=0
+
     run ostree --repo="$OSTREE_STAGING_REPO" pull-local "$OSTREE_REPO" "$rev"
     run ostree --repo="$OSTREE_STAGING_REPO" commit \
         -b "$OSTREE_PUBLISH_BRANCH" \
         -s "$message" \
         --add-metadata-string=version="$version" \
         --tree=ref="$rev"
-    run ostree --repo="$OSTREE_STAGING_REPO" static-delta generate "$OSTREE_PUBLISH_BRANCH"
+    if [[ "$had_prior_commit" -eq 1 ]]; then
+        run ostree --repo="$OSTREE_STAGING_REPO" static-delta generate "$OSTREE_PUBLISH_BRANCH"
+    else
+        echo "==> First publish on branch ${OSTREE_PUBLISH_BRANCH} — no prior commit to delta against, skipping static-delta generate"
+    fi
     run ostree --repo="$OSTREE_STAGING_REPO" summary -u
 
     run aws s3 sync "$OSTREE_STAGING_REPO" "s3://${S3_BUCKET}/ostree" "${AWS_REGION_ARGS[@]}"
