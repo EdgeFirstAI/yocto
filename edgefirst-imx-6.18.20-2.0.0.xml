@@ -91,10 +91,13 @@
   <!--  EdgeFirst layers                                                   -->
   <!-- ================================================================== -->
 
+  <!-- NOTE: pinned to the wrynose-6.18.20 bring-up branch tip in each
+       layer during bring-up; re-pin to main (upstream="main") once the
+       upgrade branches merge. -->
   <project name="meta-edgefirst" remote="edgefirst" path="sources/meta-edgefirst"
-           revision="6bbef46030293e569a0175f1dcc1ad4010b8097c" upstream="main" />
+           revision="c1fcb0f6b1510231f0912cec319f69cc0e53a25b" upstream="wrynose-6.18.20" />
   <project name="meta-kinara" remote="edgefirst" path="sources/meta-kinara"
-           revision="898eec9059a02cfba5b9d00067bcd5106e0cfda9" upstream="main" />
+           revision="a7c7c1105f690fe4d9d4788b560cd1f282f3ec1d" upstream="wrynose-6.18.20" />
 
   <!-- Manifest repo self-reference for tooling.
        NOTE: revision is wrynose-6.18.20 during bring-up;
