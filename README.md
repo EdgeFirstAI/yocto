@@ -13,7 +13,7 @@ Yocto manifests for building EdgeFirst embedded Linux images. Currently supports
 ```bash
 # 1. Initialize and sync
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
-    -b upgrade/wrynose-6.18.20 -m edgefirst-imx-6.18.20-2.0.0.xml
+    -b wrynose-6.18.20 -m edgefirst-imx-6.18.20-2.0.0.xml
 repo sync
 
 # 2. Set up build environment (first time — prompts for NXP EULA)
@@ -23,7 +23,7 @@ MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
 bitbake imx-image-full
 ```
 
-`-b upgrade/wrynose-6.18.20` is the current bring-up branch for the
+`-b wrynose-6.18.20` is the current bring-up branch for the
 6.18.20-2.0.0 (wrynose) BSP; it will flip back to `-b main` once the
 upgrade merges.
 

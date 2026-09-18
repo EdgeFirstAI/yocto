@@ -97,9 +97,9 @@
            revision="898eec9059a02cfba5b9d00067bcd5106e0cfda9" upstream="main" />
 
   <!-- Manifest repo self-reference for tooling.
-       NOTE: revision is upgrade/wrynose-6.18.20 during bring-up;
+       NOTE: revision is wrynose-6.18.20 during bring-up;
        flip back to main before merging the upgrade branch. -->
-  <project name="yocto" remote="edgefirst" path="sources/edgefirst-yocto" revision="upgrade/wrynose-6.18.20">
+  <project name="yocto" remote="edgefirst" path="sources/edgefirst-yocto" revision="wrynose-6.18.20">
     <linkfile src=".github" dest=".github" />
     <linkfile src="README.md" dest="README.md" />
     <linkfile src="edgefirst-setup" dest="edgefirst-setup" />

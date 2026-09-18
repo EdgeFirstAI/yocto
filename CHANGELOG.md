@@ -15,7 +15,7 @@ For per-package details, see the layer changelogs linked below.
   imx-6.12.49-2.2.0 manifest remains for reproducing v1.2.x releases.
 - `meta-edgefirst` and `meta-kinara` `LAYERSERIES_COMPAT` bumped to add
   `wrynose` alongside `scarthgap`, `walnascar`, and `whinlatter`.
-- Bring-up branch `upgrade/wrynose-6.18.20` tracks this BSP across the
+- Bring-up branch `wrynose-6.18.20` tracks this BSP across the
   manifest and both layers until the upgrade merges to `main`.
 
 ### BSP Upgrade (whinlatter)

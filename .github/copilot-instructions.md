@@ -93,12 +93,12 @@ build-<machine>/         # Per-MACHINE build directory (created by edgefirst-set
 
 ```bash
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
-    -b upgrade/wrynose-6.18.20 -m edgefirst-imx-6.18.20-2.0.0.xml
+    -b wrynose-6.18.20 -m edgefirst-imx-6.18.20-2.0.0.xml
 repo sync
 MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
 ```
 
-`-b upgrade/wrynose-6.18.20` is the current bring-up branch; it flips to `-b main` once the wrynose upgrade merges.
+`-b wrynose-6.18.20` is the current bring-up branch; it flips to `-b main` once the wrynose upgrade merges.
 
 ### Building
 
