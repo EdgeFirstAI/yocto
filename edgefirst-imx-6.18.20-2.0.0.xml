@@ -95,7 +95,7 @@
        layer during bring-up; re-pin to main (upstream="main") once the
        upgrade branches merge. -->
   <project name="meta-edgefirst" remote="edgefirst" path="sources/meta-edgefirst"
-           revision="c1fcb0f6b1510231f0912cec319f69cc0e53a25b" upstream="wrynose-6.18.20" />
+           revision="9d596e6500e6669561425a1eb184d72f22ac4ac3" upstream="wrynose-6.18.20" />
   <project name="meta-kinara" remote="edgefirst" path="sources/meta-kinara"
            revision="a7c7c1105f690fe4d9d4788b560cd1f282f3ec1d" upstream="wrynose-6.18.20" />
 

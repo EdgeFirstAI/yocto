@@ -17,6 +17,16 @@ For per-package details, see the layer changelogs linked below.
   `wrynose` alongside `scarthgap`, `walnascar`, and `whinlatter`.
 - Bring-up branch `wrynose-6.18.20` tracks this BSP across the
   manifest and both layers until the upgrade merges to `main`.
+- `.repo` tracking re-initialized onto `wrynose-6.18.20` /
+  `edgefirst-imx-6.18.20-2.0.0.xml` (was still resolving `repo sync`
+  against the old `whinlatter` manifest branch) and `meta-edgefirst` /
+  `meta-kinara` re-pinned to their current bring-up branch tips.
+- `tflite-vx-delegate-imx` and `imx-gst1.0-plugin` forks rebased onto
+  their wrynose NXP baselines and restored (see
+  [meta-edgefirst CHANGELOG](https://github.com/EdgeFirstAI/meta-edgefirst/blob/wrynose-6.18.20/CHANGELOG.md)
+  for details); pre-rebase tips preserved on new
+  `edgefirst-imx-6.18.2-1.0.0` anchor branches so whinlatter and any
+  external consumers pinned to the old fork tips are unaffected.
 
 ### BSP Upgrade (whinlatter)
 
