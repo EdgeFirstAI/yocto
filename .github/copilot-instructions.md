@@ -18,16 +18,14 @@ EdgeFirstAI/yocto/
   templates/
     imx/
       bblayers.conf               # NXP layers + meta-edgefirst + meta-kinara
-  edgefirst-imx-6.18.20-2.0.0.xml  # Standalone manifest (NXP BSP + EdgeFirst, current)
-  edgefirst-imx-6.18.2-1.0.0.xml   # Previous BSP manifest (whinlatter)
-  edgefirst-imx-6.12.49-2.2.0.xml  # Oldest BSP manifest (reproduces v1.2.x releases)
+  edgefirst-imx-6.18.20-2.0.0.xml  # Standalone manifest (NXP BSP + EdgeFirst)
   edgefirst-setup                   # Build environment setup script
   README.md
 ```
 
 ## How the Manifest Works
 
-Users init with `repo init -m edgefirst-imx-6.18.20-2.0.0.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
+Users init with `repo init -b edgefirst-imx-6.18.20-2.0.0 -m edgefirst-imx-6.18.20-2.0.0.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
 
 1. **NXP i.MX BSP projects** — all NXP project definitions for the imx-6.18.20-2.0.0 release (imx-linux-wrynose), with NXP root linkfiles removed (`setup-environment`, `imx-setup-release.sh`). NXP `README.md` is exposed as `README-NXP.md` for reference. Since whinlatter the Yocto Project ships as split `bitbake` / `openembedded-core` / `meta-yocto` repositories — there is no `sources/poky/`.
 2. **`<project name="meta-edgefirst">` / `<project name="meta-kinara">`** — our layers
@@ -93,12 +91,10 @@ build-<machine>/         # Per-MACHINE build directory (created by edgefirst-set
 
 ```bash
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
-    -b wrynose-6.18.20 -m edgefirst-imx-6.18.20-2.0.0.xml
+    -b edgefirst-imx-6.18.20-2.0.0 -m edgefirst-imx-6.18.20-2.0.0.xml
 repo sync
 MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
 ```
-
-`-b wrynose-6.18.20` is the current bring-up branch; it flips to `-b main` once the wrynose upgrade merges.
 
 ### Building
 
@@ -160,7 +156,18 @@ EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelin
 
 ### meta-kinara
 
-Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. The Ara-2 runtime requires `KINARA_MIRROR` to be configured (NDA required). See [setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required). Builds succeed without it since the runtime is not included by default.
+Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. The runtime recipe is `imx-nxp-ara2`: NXP's 2.1.1 packaging (meta-imx-ml, `rt-sdk-ara2.service`) wins wherever meta-imx-ml ships it (wrynose onwards); meta-kinara's `imx-nxp-ara2_1.2.1.bb` packages the Kinara SDK (`ara2.service`) under the same name, so the two can never be co-installed. The Kinara SDK recipe is used on the 6.12 BSP, on builds without meta-imx-ml, or when `PREFERRED_VERSION_imx-nxp-ara2 = "1.2.1"` is set, and it requires `KINARA_MIRROR` (NDA required). meta-kinara sets the read-only `KINARA_ARA2_RUNTIME` (`nxp` or `kinara`); meta-edgefirst builds the NNStreamer Ara-2 sub-plugin (`nnstreamer-ara2`) only when it is `kinara`. An Ara-2 card flashed by NXP's runtime (firmware 65794 or newer) is rejected by the Kinara SDK proxy with `DV_ENDPOINT_FIRMWARE_BOOT_FAILURE` until its boot firmware is restored with `program_flash --version_check 0`. See [Choosing an Ara-2 runtime](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#choosing-an-ara-2-runtime) and [Ara-2 card boot firmware](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-card-boot-firmware).
+
+## Branches and BSP Selection
+
+This is the `edgefirst-imx-6.18.20-2.0.0` branch. Every supported platform/BSP combination (NXP i.MX, Torizon, and vendor BSPs such as Ezurio and PHYTEC) has its own branch with its own manifest, setup, and docs; `main` holds only a README indexing them. The NXP i.MX branches each track one NXP BSP and pin the latest meta-edgefirst and meta-kinara. Release tags (`v1.2.3`, ...) are frozen snapshots and are never updated.
+
+| Branch | Manifest | NXP BSP | Use for |
+|---|---|---|---|
+| `edgefirst-imx-6.18.20-2.0.0` | `edgefirst-imx-6.18.20-2.0.0.xml` | 6.18.20-2.0.0 (wrynose) | i.MX 95, and i.MX 8M Plus without Ara-2 |
+| `edgefirst-imx-6.12.49-2.2.0` | `edgefirst-imx-6.12.49-2.2.0.xml` | 6.12.49-2.2.0 (walnascar) | i.MX 8M Plus with the Ara-2 NPU |
+
+i.MX 8M Plus boards hang under Ara-2 inference load on the 6.18.20 BSP; the same Kinara SDK runtime, uiodma driver, and edgefirst-ara2 bindings run stably on 6.12.49 (validated 2026-09-28 on imx8mp-frdm and imx8mp-frdm-2, about 124,000 det/seg inferences each). When meta-edgefirst or meta-kinara changes, re-pin both branches' manifests. When a branch is added, list it in `main`'s README.
 
 ## Yocto Release Compatibility (Scarthgap + Walnascar + Whinlatter + Wrynose)
 
@@ -311,7 +318,7 @@ The `imx-nnstreamer-examples` recipe installs three binaries to `/opt/edgefirst/
 |--------|-------------|
 | `yolov8n` | Unified EdgeFirst pipeline — detection + segmentation, TFLite (VX/Neutron) + Ara-2 backends |
 | `yolov8n_reference` | NNStreamer reference detection pipeline (standard NXP approach, for benchmarking) |
-| `yolov8n_ara2_reference` | NNStreamer reference detection pipeline with Ara-2 backend (for benchmarking) |
+| `yolov8n_ara2_reference` | NNStreamer reference detection pipeline with Ara-2 backend (for benchmarking; needs `nnstreamer-ara2`, built only with the Kinara SDK runtime) |
 
 The unified `yolov8n` binary auto-detects:
 - **Backend**: `.dvm` → Ara-2, `.tflite` on imx8mp → VX Delegate, `.tflite` on imx95 → Neutron
@@ -344,10 +351,10 @@ The only exception is if the benchmark's explicit purpose is to measure resource
 
 ### Ara-2 specifics
 
-- `systemctl enable --now ara2` must be active before benchmarking
+- With NXP's runtime (default), `rt-sdk-ara2.service` starts itself from a udev rule when the device enumerates — never also enable `ara2.service`. With the Kinara SDK runtime, `systemctl enable --now ara2` must be active before benchmarking
 - If Ara-2 fails with `DV_MODEL_LOAD_FAILURE code=520`, full power cycle the board (multiple cycles may be needed)
 - The unified `yolov8n` binary auto-selects the Ara-2 backend when given a `.dvm` model — it handles detection and segmentation DVM models
-- The `yolov8n_ara2_reference` binary provides the NNStreamer reference pipeline with per-element timing breakdown
+- The `yolov8n_ara2_reference` binary provides the NNStreamer reference pipeline with per-element timing breakdown; it needs `nnstreamer-ara2`, which is built only with the Kinara SDK runtime (the 6.12 BSP branch)
 
 ## Remote Wayland Screenshot Setup
 
@@ -707,9 +714,10 @@ If only one board is available, the count halves. All tests for one board can co
 
 To support a new i.MX-based vendor platform:
 
-1. Create a standalone manifest (e.g., `edgefirst-vendor-foobar.xml`) with the vendor's projects and our layers + self-reference project
+1. Create a branch named `edgefirst-<vendor>-<bsp-version>` with a standalone manifest of the same name (e.g., `edgefirst-vendor-foobar.xml`) holding the vendor's projects, our layers, and a self-reference project pointing at that branch
 2. Add a matching `templates/vendor/bblayers.conf` if the layer set differs
-3. Users init with: `repo init -m edgefirst-vendor-foobar.xml`
+3. Users init with: `repo init -b <branch> -m <manifest>.xml`
+4. Add the branch to the index in `main`'s README
 
 ## Skills Reference
 
