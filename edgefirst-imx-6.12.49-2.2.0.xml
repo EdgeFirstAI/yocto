@@ -83,12 +83,12 @@
   <!-- ================================================================== -->
 
   <project name="meta-edgefirst" remote="edgefirst" path="sources/meta-edgefirst"
-           revision="00ff79f12efd1bd325e63283e756cad300fde412" upstream="main" />
+           revision="289affdc3e8be36db6c26d70bdfce53fb66bc791" upstream="main" />
   <project name="meta-kinara" remote="edgefirst" path="sources/meta-kinara"
-           revision="b19c3410d96a285290622c4ab7561a004e384fba" upstream="main" />
+           revision="4ba0c01279c44dad6688aefac18725530cf2b518" upstream="main" />
 
   <!-- Manifest repo self-reference for tooling -->
-  <project name="yocto" remote="edgefirst" path="sources/edgefirst-yocto" revision="main">
+  <project name="yocto" remote="edgefirst" path="sources/edgefirst-yocto" revision="edgefirst-imx-6.12.49-2.2.0">
     <linkfile src=".github" dest=".github" />
     <linkfile src="README.md" dest="README.md" />
     <linkfile src="edgefirst-setup" dest="edgefirst-setup" />

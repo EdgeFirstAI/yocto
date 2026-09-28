@@ -2,6 +2,8 @@
 
 Yocto manifests for building EdgeFirst embedded Linux images. Currently supports NXP i.MX platforms, designed to extend to other vendors building i.MX-based platforms.
 
+This is the `edgefirst-imx-6.12.49-2.2.0` branch. It builds on the NXP 6.12.49-2.2.0 (walnascar) BSP and pins the latest meta-edgefirst and meta-kinara. Use it for i.MX 8M Plus boards with the Ara-2 NPU, which hang under Ara-2 inference load on the newer 6.18.20 BSP but run stably here. i.MX 95 uses the `edgefirst-imx-6.18.20-2.0.0` branch, which tracks the latest NXP BSP; the `main` branch lists every supported branch. Release tags such as `v1.2.3` are fixed snapshots and are not updated.
+
 ## Prerequisites
 
 - [repo tool](https://gerrit.googlesource.com/git-repo/)
@@ -13,7 +15,7 @@ Yocto manifests for building EdgeFirst embedded Linux images. Currently supports
 ```bash
 # 1. Initialize and sync
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
-    -b main -m edgefirst-imx-6.12.49-2.2.0.xml
+    -b edgefirst-imx-6.12.49-2.2.0 -m edgefirst-imx-6.12.49-2.2.0.xml
 repo sync
 
 # 2. Set up build environment (first time — prompts for NXP EULA)
@@ -107,10 +109,11 @@ cargo build --target aarch64-unknown-linux-gnu
 
 ## Adding Vendor Manifests
 
-The repo is designed to support multiple vendors:
+Each vendor platform and BSP gets its own branch:
 
-1. Create a standalone manifest (e.g., `edgefirst-vendor-foobar.xml`) with the vendor's projects and our layers
-2. Users init with: `repo init -m edgefirst-vendor-foobar.xml`
+1. Create a branch named `edgefirst-<vendor>-<bsp-version>` with a standalone manifest of the same name (e.g., `edgefirst-vendor-foobar.xml`) holding the vendor's projects, our layers, and a self-reference to that branch
+2. Users init with: `repo init -b <branch> -m <manifest>.xml`
+3. Add the branch to the index in `main`'s README
 
 ## Our Layers
 
@@ -122,7 +125,7 @@ EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelin
 
 Kinara Ara-2 NPU support: kernel module, firmware, and userspace libraries.
 
-The Ara-2 runtime packages require `KINARA_MIRROR` to be configured (NDA required). See [Ara-2 Runtime setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required) for details. The Ara-2 runtime is not included in the default image, so builds will succeed without it.
+The Ara-2 runtime on this BSP is the Kinara SDK packaging (`imx-nxp-ara2` 1.2.1) from meta-kinara. It requires `KINARA_MIRROR` (NDA required). Add `packagegroup-kinara` to the image, then run `systemctl enable --now ara2` once on the target. The NNStreamer Ara-2 sub-plugin (`nnstreamer-ara2`) is built. An Ara-2 card that has run NXP's runtime on a newer BSP needs its boot firmware restored first. See [Choosing an Ara-2 runtime](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#choosing-an-ara-2-runtime), [Ara-2 card boot firmware](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-card-boot-firmware), and [Ara-2 Runtime setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required).
 
 ## Changelog
 

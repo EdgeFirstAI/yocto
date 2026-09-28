@@ -5,6 +5,14 @@ infrastructure are documented here.
 
 For per-package details, see the layer changelogs linked below.
 
+## [Unreleased]
+
+### Branch for i.MX 8M Plus with Ara-2
+
+- New `edgefirst-imx-6.12.49-2.2.0` branch, started from `main` after v1.2.3. It keeps the NXP imx-6.12.49-2.2.0 (walnascar) BSP for i.MX 8M Plus boards with the Ara-2 NPU, which hang under Ara-2 inference load on the 6.18.20 BSP and run stably here, and it pins the latest `meta-edgefirst` and `meta-kinara`. The manifest's self-reference now points at this branch instead of `main`, which becomes an index of all supported branches. Release tags are not updated.
+- `meta-edgefirst` and `meta-kinara` re-pinned from v1.2.3 to the current layer tips: the Ara-2 runtime on this BSP is meta-kinara's Kinara SDK packaging (`imx-nxp-ara2` 1.2.1) with `edgefirst-ara2` 0.19.0 and `nnstreamer-ara2`, and walnascar's pseudo moves to 1.9.8 so builds work on hosts whose `tar` uses `openat2()`.
+- README and copilot instructions document the branch, the Kinara SDK runtime setup, and restoring Ara-2 card boot firmware.
+
 ## v1.2.3 — 2026-05-28
 
 ### Layer Updates

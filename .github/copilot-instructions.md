@@ -7,6 +7,10 @@ This repo (`EdgeFirstAI/yocto`) contains [repo](https://gerrit.googlesource.com/
 - Always update `README.md` and `.github/copilot-instructions.md` when making changes that affect the project setup, usage instructions, or structure. Documentation must **ALWAYS** be kept up-to-date.
 - **We own everything.** "Bug exists in another repository" is **NEVER** an acceptable conclusion. Yocto gives us access to every repository in the build — NNStreamer, edgefirst-gstreamer, edgefirst-hal, meta-edgefirst, meta-kinara, tflite-vx-delegate — and we are totally responsible for addressing **ANY** and **ALL** performance limitations or bugs in any of them. When you hit a limitation in one component (e.g., Ara-2 tensor_filter rejects DMA-BUF input), you investigate and fix that component. No shortcuts, no deference, no "that's upstream's problem."
 
+## Branch
+
+This is the `edgefirst-imx-6.12.49-2.2.0` branch. It builds on the NXP 6.12.49-2.2.0 (walnascar) BSP and pins the latest meta-edgefirst and meta-kinara. Use it for i.MX 8M Plus boards with the Ara-2 NPU, which hang under Ara-2 inference load on the newer 6.18.20 BSP but run stably here. i.MX 95 uses the `edgefirst-imx-6.18.20-2.0.0` branch, which tracks the latest NXP BSP; the `main` branch lists every supported branch. Release tags such as `v1.2.3` are fixed snapshots and are not updated. When meta-edgefirst or meta-kinara changes, re-pin this branch's manifest as well as `edgefirst-imx-6.18.20-2.0.0`'s.
+
 ## Repository Structure
 
 ```
@@ -25,7 +29,7 @@ EdgeFirstAI/yocto/
 
 ## How the Manifest Works
 
-Users init with `repo init -m edgefirst-imx-6.12.49-2.2.0.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
+Users init with `repo init -b edgefirst-imx-6.12.49-2.2.0 -m edgefirst-imx-6.12.49-2.2.0.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
 
 1. **NXP i.MX BSP projects** — all NXP project definitions for the imx-6.12.49-2.2.0 release, with NXP root linkfiles removed (`setup-environment`, `imx-setup-release.sh`). NXP `README.md` is exposed as `README-NXP.md` for reference.
 2. **`<project name="meta-edgefirst">` / `<project name="meta-kinara">`** — our layers
@@ -89,7 +93,7 @@ build-<machine>/         # Per-MACHINE build directory (created by edgefirst-set
 
 ```bash
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
-    -b main -m edgefirst-imx-6.12.49-2.2.0.xml
+    -b edgefirst-imx-6.12.49-2.2.0 -m edgefirst-imx-6.12.49-2.2.0.xml
 repo sync
 MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
 ```
@@ -154,7 +158,7 @@ EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelin
 
 ### meta-kinara
 
-Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. The Ara-2 runtime requires `KINARA_MIRROR` to be configured (NDA required). See [setup instructions](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-runtime-nda-required). Builds succeed without it since the runtime is not included by default.
+Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. On this BSP the runtime is meta-kinara's Kinara SDK packaging (`imx-nxp-ara2` 1.2.1, `ara2.service` on `/var/run/ara2.sock`), since the walnascar meta-imx-ml has no NXP Ara-2 recipe; meta-kinara's `KINARA_ARA2_RUNTIME` reads `kinara`, so meta-edgefirst builds `nnstreamer-ara2`. It requires `KINARA_MIRROR` (NDA required). `ara2.service` is installed disabled: `systemctl enable --now ara2`. A card flashed by NXP's runtime (firmware 65794 or newer) fails with `DV_ENDPOINT_FIRMWARE_BOOT_FAILURE` until restored with `program_flash --version_check 0`. See [Choosing an Ara-2 runtime](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#choosing-an-ara-2-runtime) and [Ara-2 card boot firmware](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-card-boot-firmware).
 
 ## Yocto Release Compatibility (Scarthgap + Walnascar)
 
@@ -684,9 +688,10 @@ If only one board is available, the count halves. All tests for one board can co
 
 To support a new i.MX-based vendor platform:
 
-1. Create a standalone manifest (e.g., `edgefirst-vendor-foobar.xml`) with the vendor's projects and our layers + self-reference project
+1. Create a branch named `edgefirst-<vendor>-<bsp-version>` with a standalone manifest of the same name (e.g., `edgefirst-vendor-foobar.xml`) holding the vendor's projects, our layers, and a self-reference project pointing at that branch
 2. Add a matching `templates/vendor/bblayers.conf` if the layer set differs
-3. Users init with: `repo init -m edgefirst-vendor-foobar.xml`
+3. Users init with: `repo init -b <branch> -m <manifest>.xml`
+4. Add the branch to the index in `main`'s README
 
 ## Skills Reference
 
