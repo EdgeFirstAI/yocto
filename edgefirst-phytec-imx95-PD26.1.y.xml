@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EdgeFirst manifest for PHYTEC i.MX 95 boards, based on PHYTEC's
+  BSP-Yocto-NXP-i.MX95-PD26.1.y manifest (NXP 6.18.20-2.0.0, Yocto wrynose).
+
+  PHYTEC's projects are kept as published. EdgeFirst adds meta-edgefirst and
+  this repository's self-reference. tools/init adds every <project> here to
+  BBLAYERS unless it carries <ignorebaselayer/>.
+-->
+<manifest>
+	<phytec pdn="PD26.1.y" release_uid="BSP-Yocto-NXP-i.MX95-PD26.1.y" soc="iMX95" supported_builds="
+		imx95-phyflex-libra-rdk-2/phytec-chromium-image/ampliphy-vendor,
+		imx95-phyflex-libra-rdk-2/phytec-headless-image/ampliphy-vendor,
+		imx95-phyflex-libra-rdk-2/phytec-qt6demo-image/ampliphy-vendor,
+		imx95-phyflex-libra-rdk-2/phytec-vision-image/ampliphy-vendor,
+		imx95-phyflex-libra-rdk-2/-c populate_sdk phytec-qt6demo-image/ampliphy-vendor,
+		imx95-phyflex-libra-rdk-2/phytec-headless-image phytec-headless-bundle/ampliphy-vendor-rauc,
+		imx95-phyflex-libra-rdk-2/phytec-provisioning-image/securiphy-vendor-provisioning,
+		imx95-phyflex-libra-rdk-2/phytec-securiphy-image phytec-securiphy-bundle/securiphy-vendor"
+		release_type="nightly" bspextension="NXP" build_container="phybuilder/yocto-ubuntu-26.04"/>
+
+	<remote name="ssh.phytec"           fetch="ssh://git@git.phytec.de"/>
+	<remote name="git.phytec"           fetch="git://git.phytec.de"/>
+	<remote name="yocto"                fetch="https://git.yoctoproject.org"/>
+	<remote name="github.yocto"         fetch="https://github.com/yoctoproject"/>
+	<remote name="github.clang"         fetch="https://github.com/kraj" />
+	<remote name="github.OSSystems"     fetch="https://github.com/OSSystems" />
+	<remote name="github.oe"            fetch="https://github.com/openembedded"/>
+	<remote name="github.rauc"          fetch="https://github.com/rauc"/>
+	<remote name="github.phytec"        fetch="https://github.com/phytec"/>
+	<remote name="QT6"                  fetch="https://code.qt.io/yocto" />
+	<remote name="github.fsl-community" fetch="https://github.com/Freescale"/>
+	<remote name="github.imx"           fetch="https://github.com/nxp-imx"/>
+	<remote name="github.imx-support"   fetch="https://github.com/nxp-imx-support"/>
+	<remote name="github.timesys"       fetch="https://github.com/TimesysGit"/>
+	<remote name="edgefirst"            fetch="https://github.com/EdgeFirstAI"/>
+
+	<default revision="wrynose" remote="git.phytec" sync-j="8"/>
+
+	<project name="bitbake" path="sources/oe-core/bitbake" remote="github.oe" revision="a2dd9be788274d9c7280be5b1be5eb5c3990cf54" upstream="2.18">
+		<ignorebaselayer/>
+	</project>
+	<project name="openembedded-core" path="sources/oe-core" remote="github.oe" revision="42fa856a00ac16b2a7a83d7ecfa60a5be192b16c" upstream="wrynose">
+		<ignorebaselayer/>
+		<sublayer path="meta"/>
+	</project>
+	<project name="meta-yocto" path="sources/meta-yocto" remote="yocto" revision="904846ae078ee20de073040ebb77c86e19250f56" upstream="wrynose">
+		<ignorebaselayer/>
+		<sublayer path="meta-poky"/>
+	</project>
+	<project name="meta-clang" path="sources/meta-clang" remote="github.clang" revision="78c5e12f08198f4f257a9348516d2103cd617c1d" upstream="wrynose" />
+	<project name="meta-openembedded" path="sources/meta-openembedded" remote="github.oe" revision="420222862f5a6d95023b8f5f3b7e1808b2264ef9" upstream="wrynose">
+		<ignorebaselayer/>
+		<sublayer path="meta-oe"/>
+		<sublayer path="meta-networking"/>
+		<sublayer path="meta-python"/>
+		<sublayer path="meta-multimedia"/>
+		<sublayer path="meta-filesystems"/>
+		<sublayer path="meta-perl"/>
+	</project>
+	<project name="meta-freescale" path="sources/meta-freescale" remote="github.fsl-community" revision="3949624f36cbc5b7fd4033ce5ef001d83fc1a3e9" upstream="master"/>
+	<project name="meta-freescale-3rdparty" path="sources/meta-freescale-3rdparty" remote="github.fsl-community" revision="3358b11ef81d52b9c9972d454dd43c120cbbdaf5" upstream="master"/>
+	<project name="meta-freescale-distro" path="sources/meta-freescale-distro" remote="github.fsl-community" revision="70b7591ecaa99cb6366f93ee05df7c38d94d724b" upstream="master"/>
+	<project name="meta-freescale-ml" path="sources/meta-freescale-ml" remote="github.fsl-community" revision="1330790bc6cdd3808260a16383d928e05a0e0eeb" upstream="master"/>
+
+	<project name="meta-arm" path="sources/meta-arm" remote="yocto" revision="4112fda50b814ad6e3cfaefe5cad78a83114599a" upstream="master" >
+		<ignorebaselayer />
+		<sublayer path="meta-arm"/>
+		<sublayer path="meta-arm-toolchain"/>
+	</project>
+	<project name="meta-qt6" path="sources/meta-qt6" remote="QT6" revision="3cd8b59a1303b3c079f5345c6b2555d1037925f6" upstream="6.11.0" />
+	<project name="meta-browser" path="sources/meta-browser" remote="github.OSSystems" revision="407e3ac990f5ed466cb76e5002f918860503799c" upstream="wrynose">
+		<ignorebaselayer />
+		<sublayer path="meta-chromium"/>
+	</project>
+	<project name="meta-security" path="sources/meta-security" remote="yocto" revision="9265f142f3890df2d00d71d13b19e95a082707ed" upstream="wrynose">
+		<sublayer path="meta-parsec"/>
+		<sublayer path="meta-tpm"/>
+	</project>
+	<project name="meta-timesys" path="sources/meta-timesys" remote="github.timesys" revision="240d59556180ff72efbfd105393abdee544f7282" upstream="master"/>
+	<project name="meta-virtualization" path="sources/meta-virtualization" remote="yocto" revision="022f4356d4a9b389f51472d40a9330aa59f6bb9a" upstream="master"/>
+
+	<project name="meta-imx" path="sources/meta-imx" remote="github.imx"  revision="refs/tags/rel_imx_6.18.20_2.0.0" upstream="wrynose-6.18.20-2.0.0">
+		<ignorebaselayer />
+		<sublayer path="meta-imx-bsp"/>
+		<sublayer path="meta-imx-ml"/>
+		<sublayer path="meta-imx-sdk"/>
+	</project>
+	<project name="meta-nxp-connectivity" path="sources/meta-nxp-connectivity" remote="github.imx" revision="refs/tags/rel_imx_6.18.20_2.0.0" upstream="imx_matter_2026_q1-post">
+		<ignorebaselayer />
+		<sublayer path="meta-nxp-matter-baseline"/>
+		<sublayer path="meta-nxp-openthread"/>
+	</project>
+	<project name="meta-nxp-demo-experience" path="sources/meta-nxp-demo-experience" remote="github.imx-support" revision="refs/tags/rel_imx_6.18.20_2.0.0" upstream="wrynose-6.18.20-2.0.0"/>
+
+	<project name="meta-rauc" path="sources/meta-rauc" remote="github.rauc"/>
+
+	<project name="meta-spsdk" path="sources/meta-spsdk" remote="github.phytec"/>
+	<project name="meta-ampliphy" path="sources/meta-ampliphy"/>
+	<project name="meta-phytec" path="sources/meta-phytec">
+		<copyfile dest="tools/init" src="scripts/init"/>
+	</project>
+	<project name="meta-qt6-phytec" path="sources/meta-qt6-phytec"/>
+
+	<!-- EdgeFirst layers -->
+	<project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="289affdc3e8be36db6c26d70bdfce53fb66bc791" upstream="main"/>
+
+	<!-- Manifest repo self-reference for tooling; not a layer -->
+	<project name="yocto" path="sources/edgefirst-yocto" remote="edgefirst" revision="edgefirst-phytec-imx95-PD26.1.y">
+		<ignorebaselayer/>
+		<linkfile src="README.md" dest="README-EDGEFIRST.md"/>
+	</project>
+</manifest>
