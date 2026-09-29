@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EdgeFirst manifest for PHYTEC i.MX 8M Plus boards, based on PHYTEC's
+  BSP-Yocto-NXP-i.MX8MP-PD26.1.y manifest (NXP 6.12.49-2.2.0, Yocto walnascar).
+
+  PHYTEC's projects are kept as published. EdgeFirst adds meta-edgefirst and
+  this repository's self-reference. tools/init adds every <project> here to
+  BBLAYERS unless it carries <ignorebaselayer/>.
+-->
+<manifest>
+  <phytec pdn="PD26.1.y" release_uid="BSP-Yocto-NXP-i.MX8MP-PD26.1.y" soc="iMX8MP" supported_builds="
+    phyboard-pollux-imx8mp-3/phytec-chromium-image/ampliphy-vendor,
+    phyboard-pollux-imx8mp-3/phytec-headless-image/ampliphy-vendor,
+    phyboard-pollux-imx8mp-3/phytec-qt6demo-image/ampliphy-vendor,
+    phyboard-pollux-imx8mp-3/phytec-vision-image/ampliphy-vendor,
+    phyboard-pollux-imx8mp-3/phytec-headless-bundle/ampliphy-vendor-rauc,
+    phyboard-pollux-imx8mp-3/phytec-provisioning-image/securiphy-vendor-provisioning,
+    phyboard-pollux-imx8mp-3/phytec-securiphy-bundle/securiphy-vendor,
+    imx8mp-phyflex-libra-rdk-2/phytec-chromium-image/ampliphy-vendor,
+    imx8mp-phyflex-libra-rdk-2/phytec-headless-image/ampliphy-vendor,
+    imx8mp-phyflex-libra-rdk-2/phytec-qt6demo-image/ampliphy-vendor,
+    imx8mp-phyflex-libra-rdk-2/phytec-vision-image/ampliphy-vendor,
+    imx8mp-phyflex-libra-rdk-2/-c populate_sdk phytec-qt6demo-image/ampliphy-vendor,
+    imx8mp-phyflex-libra-rdk-2/phytec-headless-bundle/ampliphy-vendor-rauc,
+    imx8mp-phyflex-libra-rdk-2/phytec-provisioning-image/securiphy-vendor-provisioning,
+    imx8mp-phyflex-libra-rdk-2/phytec-securiphy-bundle/securiphy-vendor,
+    imx8mp-phyflex-phyvip-1/phytec-headless-image/ampliphy-vendor,
+    imx8mp-phyflex-phyvip-1/phytec-vision-image/ampliphy-vendor,
+    imx8mp-phyflex-phyvip-1/phytec-headless-bundle/ampliphy-vendor-rauc,
+    imx8mp-phyflex-phyvip-1/phytec-provisioning-image/securiphy-vendor-provisioning,
+    imx8mp-phyflex-phyvip-1/phytec-securiphy-bundle/securiphy-vendor"      
+    release_type="nightly" bspextension="NXP" build_container="phybuilder/yocto-ubuntu-24.04"/>
+
+  <remote name="git.phytec"     fetch="git://git.phytec.de"/>
+  <remote name="ssh.phytec"     fetch="ssh://git@git.phytec.de"/>
+  <remote name="github.phytec"  fetch="https://github.com/phytec"/>
+  <remote name="yocto"          fetch="https://git.yoctoproject.org"/>
+  <remote name="github.yocto"   fetch="https://github.com/yoctoproject"/>
+  <remote name="github.clang"          fetch="https://github.com/kraj" />
+  <remote name="github.OSSystems"      fetch="https://github.com/OSSystems" />
+  <remote name="github.oe"      fetch="https://github.com/openembedded"/>
+  <remote name="github.rauc"    fetch="https://github.com/rauc"/>
+  <remote name="github.timesys" fetch="https://github.com/TimesysGit"/>
+  <remote name="QT6"            fetch="https://code.qt.io/yocto"/>
+  <remote name="github.fsl-community"  fetch="https://github.com/Freescale"/>
+  <remote name="github.nxp-imx"            fetch="https://github.com/nxp-imx"/>
+  <remote name="github.imx-support"    fetch="https://github.com/nxp-imx-support"/>
+  <remote name="edgefirst"             fetch="https://github.com/EdgeFirstAI"/>
+
+  <default revision="walnascar" remote="git.phytec" sync-j="8"/>
+
+  <project name="poky" path="sources/poky" remote="github.yocto">
+    <ignorebaselayer/>
+    <sublayer path="meta"/>
+    <sublayer path="meta-poky"/>
+  </project>
+  <project name="meta-openembedded" path="sources/meta-openembedded" remote="github.oe">
+    <ignorebaselayer/>
+    <sublayer path="meta-oe"/>
+    <sublayer path="meta-networking"/>
+    <sublayer path="meta-python"/>
+    <sublayer path="meta-multimedia"/>
+    <sublayer path="meta-filesystems"/>
+    <sublayer path="meta-perl"/>
+  </project>
+  <project name="meta-freescale" path="sources/meta-freescale" remote="github.fsl-community" revision="3d2781ad200846183ee3f3391f49512d0ef1b529" upstream="master"/>
+
+  <project name="fsl-community-bsp-base" path="sources/base" remote="github.fsl-community" revision="1705821f266d87688e7b3fb92d5535d1725aefe6" upstream="master">
+    <ignorebaselayer/>
+  </project>
+  <project name="meta-freescale-3rdparty" path="sources/meta-freescale-3rdparty" remote="github.fsl-community" revision="5ba0c7cfdba9bc7c4495f0cdf1c195f45b7164a6" upstream="walnascar"/>
+  <project name="meta-freescale-distro" path="sources/meta-freescale-distro" remote="github.fsl-community" revision="b9c3536b68271c420fe5de36fc284781ceaa32ab" upstream="master" />
+  <project name="meta-freescale-ml" path="sources/meta-freescale-ml" remote="github.fsl-community" revision="e55df3c0f515ba62fcc2cc4c8ddee80b99706a40" upstream="walnascar" />
+  <project name="meta-rauc" path="sources/meta-rauc" remote="github.rauc"/>
+  <project name="meta-qt6" path="sources/meta-qt6" remote="QT6" revision="00c3bd954341a2a755fdee6b978af952f51793e7" upstream="6.8.3" />
+  <project name="meta-arm" path="sources/meta-arm" remote="yocto">
+    <ignorebaselayer />
+    <sublayer path="meta-arm"/>
+    <sublayer path="meta-arm-toolchain"/>
+  </project>
+  <project name="meta-clang" path="sources/meta-clang" remote="github.clang" revision="003cba92e982bdd565a6889f28799f8bba14957e"/>
+  <project name="meta-browser" path="sources/meta-browser" remote="github.OSSystems" revision="f988d616d37ddf160d3d747ed54d0a66d549f499">
+    <ignorebaselayer />
+    <sublayer path="meta-chromium"/>
+  </project>
+  <project name="meta-security" path="sources/meta-security" remote="yocto" revision="1f7eeb8e84811fa79b98f236ade42dc52d44cfc6">
+    <sublayer path="meta-parsec"/>
+    <sublayer path="meta-tpm"/>
+  </project>
+  <project name="meta-timesys" path="sources/meta-timesys" remote="github.timesys" revision="3adeff0c300011fb7e4130dac5c54dc2e6e4fb2b" upstream="master"/>
+  <project name="meta-virtualization" path="sources/meta-virtualization" remote="yocto" revision="38008d99d5bedc7d9769b9e95e3d6019a2df1698"/>
+  <project name="meta-imx" path="sources/meta-imx" remote="github.nxp-imx" revision="refs/tags/rel_imx_6.12.49_2.2.0" upstream="walnascar-6.12.49-2.2.0">
+    <ignorebaselayer />
+    <sublayer path="meta-imx-bsp"/>
+    <sublayer path="meta-imx-ml"/>
+    <sublayer path="meta-imx-sdk"/>
+    <linkfile src="tools/imx-setup-release.sh" dest="imx-setup-release.sh" />
+    <linkfile src="README" dest="README-IMXBSP" />
+  </project>
+  <project name="meta-nxp-connectivity" path="sources/meta-nxp-connectivity" remote="github.nxp-imx" revision="refs/tags/rel_imx_6.12.49_2.2.0" upstream="imx_matter_2025_q3-post">
+    <ignorebaselayer/>
+    <sublayer path="meta-nxp-matter-baseline"/>
+    <sublayer path="meta-nxp-openthread"/>
+    <sublayer path="meta-nxp-zigbee-rcp"/>
+  </project>
+  <project name="meta-nxp-demo-experience" path="sources/meta-nxp-demo-experience" remote="github.imx-support" revision="refs/tags/rel_imx_6.12.49_2.2.0" upstream="walnascar-6.12.49-2.2.0"/>
+
+  <project name="meta-hailo-phytec" path="sources/meta-hailo" remote="github.phytec" revision="hailo8-walnascar">
+    <ignorebaselayer/>
+    <sublayer path="meta-hailo-accelerator"/>
+    <sublayer path="meta-hailo-libhailort"/>
+    <sublayer path="meta-hailo-tappas"/>
+  </project>
+  <project name="meta-ampliphy" path="sources/meta-ampliphy"/>
+  <project name="meta-phytec" path="sources/meta-phytec">
+    <copyfile dest="tools/init" src="scripts/init"/>
+  </project>
+  <project name="meta-qt6-phytec" path="sources/meta-qt6-phytec"/>
+
+  <!-- EdgeFirst layers -->
+  <project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="289affdc3e8be36db6c26d70bdfce53fb66bc791" upstream="main"/>
+
+  <!-- Manifest repo self-reference for tooling; not a layer -->
+  <project name="yocto" path="sources/edgefirst-yocto" remote="edgefirst" revision="edgefirst-phytec-imx8mp-PD26.1.y">
+    <ignorebaselayer/>
+    <linkfile src="README.md" dest="README-EDGEFIRST.md"/>
+  </project>
+</manifest>
