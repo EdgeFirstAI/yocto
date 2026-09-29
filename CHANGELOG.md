@@ -11,7 +11,7 @@ For per-package details, see the layer changelogs linked below.
 
 - This branch, `edgefirst-imx-6.18.20-2.0.0`, replaces the `wrynose-6.18.20` bring-up branch and carries only the `edgefirst-imx-6.18.20-2.0.0.xml` manifest, whose self-reference now points at this branch. Every supported platform/BSP now has its own branch, and `main` becomes an index of them.
 - The imx-6.12.49-2.2.0 manifest moved to its own `edgefirst-imx-6.12.49-2.2.0` branch, which i.MX 8M Plus boards with the Ara-2 NPU should use: they hang under Ara-2 inference load on this BSP and run stably on 6.12.49.
-- The imx-6.18.2-1.0.0 (whinlatter) manifest is removed; it was a step towards this BSP and remains in history and on the `upgrade/whinlatter-6.18.2` branch.
+- The imx-6.18.2-1.0.0 (whinlatter) manifest is removed; it was a step towards this BSP and remains in this branch's history.
 - `meta-edgefirst` and `meta-kinara` re-pinned to their `main` branches, which now include the wrynose bring-up, and the Ara-2 runtime rework: `imx-nxp-ara2` is one recipe name for NXP's runtime and meta-kinara's Kinara SDK packaging, `edgefirst-ara2` 0.19.0 moved to meta-edgefirst, and `nnstreamer-ara2` is built only with the Kinara SDK runtime.
 - README and copilot instructions document the per-BSP branches, which branch to use for each SoC, and restoring Ara-2 card boot firmware.
 
