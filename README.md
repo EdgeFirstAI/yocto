@@ -1,6 +1,6 @@
 # EdgeFirst Yocto — PHYTEC i.MX 8M Plus (PD26.1)
 
-EdgeFirst on PHYTEC i.MX 8M Plus boards, built from PHYTEC's `BSP-Yocto-NXP-i.MX8MP-PD26.1.y` release line (NXP 6.12.49-2.2.0, Yocto walnascar) with [meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst) added.
+EdgeFirst on PHYTEC i.MX 8M Plus boards, built from PHYTEC's `BSP-Yocto-NXP-i.MX8MP-PD26.1.y` release line (NXP 6.12.49-2.2.0, Yocto 5.2 walnascar) with [meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst) added.
 
 This is the `edgefirst-phytec-imx8mp-PD26.1.y` branch of [EdgeFirstAI/yocto](https://github.com/EdgeFirstAI/yocto). PHYTEC i.MX 95 boards use `edgefirst-phytec-imx95-PD26.1.y`, and the `main` branch lists every supported branch.
 
@@ -12,7 +12,20 @@ This is the `edgefirst-phytec-imx8mp-PD26.1.y` branch of [EdgeFirstAI/yocto](htt
 | `imx8mp-phyflex-libra-rdk-2` | phyBOARD-Libra with phyFLEX-i.MX 8M Plus FPSC |
 | `imx8mp-phyflex-phyvip-1` | phyFLEX-i.MX 8M Plus on phyVIP (listed by PHYTEC; not yet built with EdgeFirst) |
 
-These boards stay on PHYTEC's i.MX 8M Plus release line. PHYTEC's newer i.MX 95 line (wrynose) still carries i.MX 8M Plus machines, but their kernel, U-Boot, and boot-image recipes have not been ported to it, and PHYTEC does not list them as supported there.
+## Release lines — one branch per SoC
+
+PHYTEC publishes the PD26.1.y release against **two different Yocto releases**, and the SoC decides which one applies:
+
+| SoC | Yocto | PHYTEC manifest | Branch |
+|---|---|---|---|
+| i.MX 8M Plus | walnascar (5.2.4) | `BSP-Yocto-NXP-i.MX8MP-PD26.1.y` | [`edgefirst-phytec-imx8mp-PD26.1.y`](https://github.com/EdgeFirstAI/yocto/tree/edgefirst-phytec-imx8mp-PD26.1.y) |
+| i.MX 95 | wrynose (6.0) | `BSP-Yocto-NXP-i.MX95-PD26.1.y` | [`edgefirst-phytec-imx95-PD26.1.y`](https://github.com/EdgeFirstAI/yocto/tree/edgefirst-phytec-imx95-PD26.1.y) |
+
+There is no single Yocto version that tracks PD26.1.y — use the branch for your SoC. Because the two lines differ in directory layout (walnascar has a combined `poky`, wrynose splits `oe-core` and `meta-yocto`), **build each line in its own workspace** rather than switching one tree between branches.
+
+Both lines ship all of PHYTEC's i.MX 8M Plus and i.MX 95 machine configs, but **a machine config existing is not a support claim.** wrynose carries the i.MX 8M Plus machines while their kernel, U-Boot, and boot-image recipes are unported, so those builds fail late — `perf`, `u-boot-phytec-imx:do_deploy`, and `imx-boot-phytec`.
+
+**The split is temporary, with a specific end condition:** it holds because PHYTEC has not ported the i.MX 8M Plus kernel, U-Boot, and boot-image recipes to its wrynose line and does not list those machines as supported there. When PHYTEC ships them, the i.MX 8M Plus branch can move to wrynose and the two branches may merge. Until a PHYTEC release note says otherwise, assume the split still applies.
 
 ## Quick Start
 
