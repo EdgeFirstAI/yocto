@@ -1,0 +1,107 @@
+#!/bin/sh
+# EdgeFirst Yocto Build Environment Setup for Ezurio Nitrogen SMARC
+#
+# Usage: MACHINE=<machine> [DISTRO=<distro>] . edgefirst-setup [-b build-dir]
+#
+# Creates (or re-enters) a build directory through Ezurio's own
+# setup-environment-nxp, then adds meta-edgefirst and meta-edgefirst-ezurio to a new build directory.
+# Ezurio's local.conf and bblayers.conf are otherwise left as published.
+
+edgefirst_root=$(pwd)
+
+edgefirst_list_machines() {
+    cat <<EOF
+Supported machines:
+  imx8mp-nitrogen-smarc-4g    Nitrogen SMARC i.MX 8M Plus, 4 GB
+  imx95-nitrogen-smarc        Nitrogen SMARC i.MX 95
+EOF
+}
+
+edgefirst_usage() {
+    cat <<EOF
+
+Usage: MACHINE=<machine> [DISTRO=<distro>] . edgefirst-setup [-b build-dir]
+
+  -b build-dir      Build directory (default: build)
+  -h, --help        Show this help
+  --list-machines   List supported machines
+
+MACHINE is required when creating a new build directory and is baked into
+local.conf. DISTRO defaults to summitsom-wayland, which enables the OpenGL ES
+and EGL userspace. Re-entering an existing build directory needs neither.
+
+EOF
+    edgefirst_list_machines
+}
+
+edgefirst_clean_up() {
+    unset edgefirst_root edgefirst_build edgefirst_first_run edgefirst_opt
+    unset edgefirst_arg edgefirst_rc edgefirst_layer
+    unset -f edgefirst_usage edgefirst_list_machines edgefirst_clean_up
+}
+
+for edgefirst_arg do
+    case $edgefirst_arg in
+        --list-machines) edgefirst_list_machines; edgefirst_clean_up; return 0 ;;
+        --help) edgefirst_usage; edgefirst_clean_up; return 0 ;;
+    esac
+done
+
+edgefirst_build="build"
+OPTIND=1
+while getopts "b:h" edgefirst_opt; do
+    case $edgefirst_opt in
+        b) edgefirst_build="$OPTARG" ;;
+        h) edgefirst_usage; edgefirst_clean_up; return 0 ;;
+        *) edgefirst_clean_up; return 1 ;;
+    esac
+done
+
+if [ ! -e "$edgefirst_root/setup-environment-nxp" ]; then
+    echo "ERROR: setup-environment-nxp not found. Run 'repo sync' and source this" \
+         "script from the workspace root."
+    edgefirst_clean_up
+    return 1
+fi
+
+for edgefirst_layer in meta-edgefirst meta-edgefirst-ezurio; do
+    if [ ! -e "$edgefirst_root/sources/$edgefirst_layer/conf/layer.conf" ]; then
+        echo "ERROR: sources/$edgefirst_layer not found. Run 'repo sync' first."
+        edgefirst_clean_up
+        return 1
+    fi
+done
+
+if [ -e "$edgefirst_root/$edgefirst_build/conf/local.conf" ]; then
+    edgefirst_first_run=false
+else
+    edgefirst_first_run=true
+    if [ -z "${MACHINE:-}" ]; then
+        echo
+        echo "ERROR: MACHINE is required when creating a new build directory."
+        echo
+        edgefirst_list_machines
+        edgefirst_clean_up
+        return 1
+    fi
+    export DISTRO="${DISTRO:-summitsom-wayland}"
+fi
+
+# Ezurio's script prompts for the NXP EULA unless ACCEPT_FSL_EULA is already
+# set in local.conf or EULA is set in the environment.
+. "$edgefirst_root/setup-environment-nxp" "$edgefirst_build"
+edgefirst_rc=$?
+if [ $edgefirst_rc -ne 0 ]; then
+    edgefirst_clean_up
+    return $edgefirst_rc
+fi
+
+if [ "$edgefirst_first_run" = "true" ]; then
+    # shellcheck disable=SC2016
+    {
+        echo 'BBLAYERS += "${BSPDIR}/sources/meta-edgefirst"'
+        echo 'BBLAYERS += "${BSPDIR}/sources/meta-edgefirst-ezurio"'
+    } >> conf/bblayers.conf
+fi
+
+edgefirst_clean_up
