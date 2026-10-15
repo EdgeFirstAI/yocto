@@ -3,9 +3,10 @@
   EdgeFirst manifest for PHYTEC i.MX 95 boards, based on PHYTEC's
   BSP-Yocto-NXP-i.MX95-PD26.1.y manifest (NXP 6.18.20-2.0.0, Yocto wrynose).
 
-  PHYTEC's projects are kept as published. EdgeFirst adds meta-edgefirst and
-  this repository's self-reference. tools/init adds every <project> here to
-  BBLAYERS unless it carries <ignorebaselayer/>.
+  PHYTEC's projects are kept as published. EdgeFirst adds meta-edgefirst, the
+  PHYTEC vendor layer meta-edgefirst-phytec, and this repository's
+  self-reference. tools/init adds every <project> here to BBLAYERS unless it
+  carries <ignorebaselayer/>.
 -->
 <manifest>
 	<phytec pdn="PD26.1.y" release_uid="BSP-Yocto-NXP-i.MX95-PD26.1.y" soc="iMX95" supported_builds="
@@ -103,7 +104,8 @@
 	<project name="meta-qt6-phytec" path="sources/meta-qt6-phytec"/>
 
 	<!-- EdgeFirst layers -->
-	<project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="3bba0790ebd2d867077f3ffeb83c1333f2b38a7c" upstream="main"/>
+	<project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="635d4be72c9bfdb09f498aaeb79e2afd3f657002" upstream="main"/>
+	<project name="meta-edgefirst-phytec" path="sources/meta-edgefirst-phytec" remote="edgefirst" revision="7575537234bcff6cacafcf6423b9bc01b823c276" upstream="main"/>
 
 	<!-- Manifest repo self-reference for tooling; not a layer -->
 	<project name="yocto" path="sources/edgefirst-yocto" remote="edgefirst" revision="edgefirst-phytec-imx95-PD26.1.y">
