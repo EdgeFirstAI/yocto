@@ -100,12 +100,12 @@
   <project path="sources/meta-edgefirst"
            name="meta-edgefirst"
            remote="edgefirst"
-           revision="eb54be6b969c846df1ee0a995c3bc37f8c46bfa4"
+           revision="c9491ea327fe60e952be1c001be5228795055b99"
            upstream="main"/>
   <project path="sources/meta-edgefirst-ezurio"
            name="meta-edgefirst-ezurio"
            remote="edgefirst"
-           revision="9efc3a5f79a7b314d72f5605aa5e1c740857a1a5"
+           revision="24d636bcb49da8107b8b028be6e3708b3cf035ab"
            upstream="main"/>
 
   <!-- Manifest repo self-reference for tooling; not a layer -->
