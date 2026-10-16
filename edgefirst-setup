@@ -40,7 +40,11 @@ Environment, read on every run (not only when creating a build directory):
                        development builds named by build time.
   EDGEFIRST_CERT_PATH  EdgeFirst CA directory. When set the .swu is signed and
                        the image trusts the EdgeFirst root; when unset the
-                       image is unsigned.
+                       image is unsigned. Required with EDGEFIRST_RELEASE.
+  EDGEFIRST_SIGNING_CERT_PATH, EDGEFIRST_SIGNING_VENDOR, EDGEFIRST_SIGNING_LEAF
+                       Optional. Take the signing material from another CA
+                       directory, vendor or leaf than the trusted one, for a
+                       package that migrates devices or rotates the leaf.
 
 EOF
     edgefirst_list_machines
@@ -113,6 +117,12 @@ if [ -n "${EDGEFIRST_RELEASE:-}" ]; then
     export SUMMIT_RELEASE_STRING="EdgeFirst Yocto for Ezurio $EDGEFIRST_RELEASE"
 fi
 
+if [ -n "${EDGEFIRST_RELEASE:-}" ] && [ -z "${EDGEFIRST_CERT_PATH:-}" ]; then
+    echo "ERROR: a release build needs EDGEFIRST_CERT_PATH so the .swu is signed and the image trusts the EdgeFirst root."
+    edgefirst_clean_up
+    return 1
+fi
+
 if [ -n "${EDGEFIRST_CERT_PATH:-}" ]; then
     if [ ! -f "$EDGEFIRST_CERT_PATH/root/edgefirst-root.crt.pem" ]; then
         echo "ERROR: EDGEFIRST_CERT_PATH has no root/edgefirst-root.crt.pem: $EDGEFIRST_CERT_PATH"
@@ -121,7 +131,7 @@ if [ -n "${EDGEFIRST_CERT_PATH:-}" ]; then
     fi
     export EDGEFIRST_CERT_PATH
 fi
-export BB_ENV_PASSTHROUGH_ADDITIONS="${BB_ENV_PASSTHROUGH_ADDITIONS:-} EDGEFIRST_CERT_PATH"
+export BB_ENV_PASSTHROUGH_ADDITIONS="${BB_ENV_PASSTHROUGH_ADDITIONS:-} EDGEFIRST_CERT_PATH EDGEFIRST_SIGNING_CERT_PATH EDGEFIRST_SIGNING_VENDOR EDGEFIRST_SIGNING_LEAF"
 
 # Ezurio's script prompts for the NXP EULA unless ACCEPT_FSL_EULA is already
 # set in local.conf or EULA is set in the environment.
