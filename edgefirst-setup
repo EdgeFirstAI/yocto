@@ -3,6 +3,9 @@
 #
 # Usage: MACHINE=<machine> [DISTRO=<distro>] . edgefirst-setup [-b build-dir]
 #
+# Release builds also set EDGEFIRST_RELEASE=YYYY.MM.PATCH and, to sign the
+# .swu, EDGEFIRST_CERT_PATH=<EdgeFirst CA directory>.
+#
 # Creates (or re-enters) a build directory through Ezurio's own
 # setup-environment-nxp, then adds meta-edgefirst and meta-edgefirst-ezurio to a new build directory.
 # Ezurio's local.conf and bblayers.conf are otherwise left as published.
@@ -29,6 +32,15 @@ Usage: MACHINE=<machine> [DISTRO=<distro>] . edgefirst-setup [-b build-dir]
 MACHINE is required when creating a new build directory and is baked into
 local.conf. DISTRO defaults to summitsom-wayland, which enables the OpenGL ES
 and EGL userspace. Re-entering an existing build directory needs neither.
+
+Environment, read on every run (not only when creating a build directory):
+
+  EDGEFIRST_RELEASE    Release version as YYYY.MM.PATCH. Names the images,
+                       sets os-release and the login banner. Unset builds are
+                       development builds named by build time.
+  EDGEFIRST_CERT_PATH  EdgeFirst CA directory. When set the .swu is signed and
+                       the image trusts the EdgeFirst root; when unset the
+                       image is unsigned.
 
 EOF
     edgefirst_list_machines
@@ -86,6 +98,30 @@ else
     fi
     export DISTRO="${DISTRO:-summitsom-wayland}"
 fi
+
+if [ -n "${EDGEFIRST_RELEASE:-}" ]; then
+    case $EDGEFIRST_RELEASE in
+        [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9]|[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]) ;;
+        *)
+            echo "ERROR: EDGEFIRST_RELEASE must be YYYY.MM.PATCH, for example 2026.10.0."
+            edgefirst_clean_up
+            return 1
+            ;;
+    esac
+    # Ezurio's script turns VERSION into the image suffix and SUMMIT_VERSION.
+    export VERSION="$EDGEFIRST_RELEASE"
+    export SUMMIT_RELEASE_STRING="EdgeFirst Yocto for Ezurio $EDGEFIRST_RELEASE"
+fi
+
+if [ -n "${EDGEFIRST_CERT_PATH:-}" ]; then
+    if [ ! -f "$EDGEFIRST_CERT_PATH/root/edgefirst-root.crt.pem" ]; then
+        echo "ERROR: EDGEFIRST_CERT_PATH has no root/edgefirst-root.crt.pem: $EDGEFIRST_CERT_PATH"
+        edgefirst_clean_up
+        return 1
+    fi
+    export EDGEFIRST_CERT_PATH
+fi
+export BB_ENV_PASSTHROUGH_ADDITIONS="${BB_ENV_PASSTHROUGH_ADDITIONS:-} EDGEFIRST_CERT_PATH"
 
 # Ezurio's script prompts for the NXP EULA unless ACCEPT_FSL_EULA is already
 # set in local.conf or EULA is set in the environment.
