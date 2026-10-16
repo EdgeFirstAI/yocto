@@ -1,0 +1,30 @@
+# Source this file instead of setup-environment:
+#
+#   MACHINE=verdin-imx8mp source setup-edgefirst build-verdin-imx8mp
+#
+# It runs Toradex's setup-environment (DISTRO defaults to torizon and EULA
+# to 1) and then adds meta-edgefirst and meta-edgefirst-torizon to the build.
+# Toradex regenerates conf/bblayers.conf whenever MACHINE, DISTRO or its own
+# scripts change, so the layers are re-added on every run.
+
+export DISTRO="${DISTRO:-torizon}"
+export EULA="${EULA:-1}"
+
+source setup-environment "$@" || return
+
+for layer in meta-edgefirst meta-edgefirst-torizon; do
+    bitbake-layers show-layers 2>/dev/null | grep -q "^${layer} " ||
+        bitbake-layers add-layer "$(cd .. && pwd)/layers/${layer}" >/dev/null ||
+        echo "setup-edgefirst: failed to add ${layer}" >&2
+done
+
+# The Torizon local.conf template resets BBMASK, so a mask cannot come from a
+# layer.conf. meta-edgefirst appends to recipes that live in layers this build
+# does not carry (meta-imx-sdk, meta-qt6), and an unmatched bbappend is a
+# parse error.
+grep -q "^# EdgeFirst" conf/local.conf || cat >> conf/local.conf <<'EOT'
+
+# EdgeFirst
+BBMASK += "meta-edgefirst/recipes-gstreamer/imx-nnstreamer-examples"
+BBMASK += "meta-edgefirst/recipes-qt/packagegroups/packagegroup-qt6-addons"
+EOT
