@@ -177,3 +177,11 @@ When porting a `meta-edgefirst` hardware patch to Torizon, check whether it targ
 ## Changelog Management
 
 `CHANGELOG.md` records changes to this branch: manifest pins, setup tooling and publishing. It links to `meta-edgefirst/CHANGELOG.md` for per-package version tables, which in turn link to each package's own changelog.
+
+## Signing the OSTree repository
+
+Published commits and the repository summary are signed with the dedicated GPG key `EdgeFirst Torizon OSTree Signing 1` (RSA-4096, fingerprint `F84E000B6A60E73210BC588812662353529A4EFC`). The key and its GPG home live in `~/edgefirst-ca/torizon/private/gnupg`, and the public key is `~/edgefirst-ca/torizon/edgefirst-torizon-ostree.gpg`; neither is ever copied into a Yocto tree or committed.
+
+Publish with `OSTREE_GPG_KEY` set to the fingerprint, `OSTREE_GPG_HOMEDIR` to that GPG home and `OSTREE_SIGN_BIN=/usr/bin/ostree`, because Yocto's `ostree-native` has no gpgme. Always pass `--ostree-only`: the TEZI step publishes to `s3://<bucket>/tezi/` and rewrites the shared `image_list.json`, which is outside the allowed `ostree/torizon` prefix.
+
+After a publish, verify as a client would: add the public key with `ostree remote add --gpg-import=<key>` to a scratch repository and `ostree pull --depth=-1` each ref from `https://repo.edgefirst.ai/ostree/torizon`, then repeat with an unrelated key and expect "public key not found".

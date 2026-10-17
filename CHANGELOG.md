@@ -37,4 +37,6 @@ Package version tables live in the [meta-edgefirst changelog](https://github.com
 
 - `setup-edgefirst` replaces the manual `setup-environment` invocation.
   It defaults `DISTRO` and `EULA`, adds the EdgeFirst layers to `bblayers.conf`, and writes the `BBMASK` entries `meta-edgefirst` needs, so a build directory needs no hand-edited configuration.
+- `publish-repo.sh` signs published OSTree commits and the repository summary with a GPG key when `OSTREE_GPG_KEY` is set (with `OSTREE_GPG_HOMEDIR` and `OSTREE_SIGN_BIN` for the key location and a gpgme-enabled `ostree`), and `--sign-only` signs every commit already in the staging repository.
+  Yocto's `ostree-native` is built without gpgme, so the signing steps run through the host `ostree`.
 - `publish-repo.sh` honours `OSTREE_S3_PREFIX` (default `ostree`) as the S3 key prefix for the published repository.

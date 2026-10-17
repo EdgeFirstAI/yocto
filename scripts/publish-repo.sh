@@ -50,6 +50,8 @@
 #   ./publish-repo.sh -n         # dry run
 #   ./publish-repo.sh --ostree-only
 #   ./publish-repo.sh --tezi-only
+#   ./publish-repo.sh --sign-only  # sign every commit already in the staging
+#                                  # repo, refresh the signed summary, sync
 #
 # Required environment variables:
 #   MACHINE                     Target machine name (e.g. verdin-imx8mp)
@@ -80,6 +82,17 @@
 #                                skipped if not set)
 #   PUBLIC_URL                  default: unset (post-publish HTTP
 #                                verification is skipped if not set)
+#   OSTREE_GPG_KEY              default: unset (commits and the summary are
+#                                published unsigned). A GPG key ID or
+#                                fingerprint: every new commit and the repo
+#                                summary are signed with it, and the script
+#                                stops if the key is not available
+#   OSTREE_GPG_HOMEDIR          default: unset (gpg's own default). GPG home
+#                                directory that holds OSTREE_GPG_KEY
+#   OSTREE_SIGN_BIN             default: ostree. The ostree binary used for the
+#                                signing steps; it must be built with gpgme.
+#                                Yocto's ostree-native is not, so point this
+#                                at the host's /usr/bin/ostree
 #   CHANNEL                     default: develop
 #   OSTREE_PUBLISH_BRANCH       default: $IMAGE_NAME/$MACHINE/$CHANNEL
 #   VERSION                     default: $(date +%Y.%m.%d)-$MACHINE
@@ -102,10 +115,14 @@ S3_REGION="${S3_REGION:-}"         # aws CLI's own default is used if empty
 CLOUDFRONT_DISTRIBUTION_ID="${CLOUDFRONT_DISTRIBUTION_ID:-}"
 PUBLIC_URL="${PUBLIC_URL:-}"
 CHANNEL="${CHANNEL:-develop}"
+OSTREE_GPG_KEY="${OSTREE_GPG_KEY:-}"
+OSTREE_GPG_HOMEDIR="${OSTREE_GPG_HOMEDIR:-}"
+OSTREE_SIGN_BIN="${OSTREE_SIGN_BIN:-ostree}"
 
 DO_OSTREE=1
 DO_TEZI=1
 DO_VERIFY=1
+DO_SIGN_ONLY=0
 DRY_RUN=0
 for arg in "$@"; do
     case "$arg" in
@@ -113,6 +130,7 @@ for arg in "$@"; do
         --ostree-only) DO_TEZI=0 ;;
         --tezi-only) DO_OSTREE=0 ;;
         --skip-verify) DO_VERIFY=0 ;;
+        --sign-only) DO_SIGN_ONLY=1; DO_TEZI=0 ;;
         -h|--help)
             SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
             sed -n '2,/^set -euo/p' "$SCRIPT_PATH" | sed '$d'
@@ -158,6 +176,23 @@ command -v aws    >/dev/null 2>&1 || die "aws CLI not found on PATH"
 command -v ostree >/dev/null 2>&1 || die "ostree CLI not found on PATH"
 command -v tar     >/dev/null 2>&1 || die "tar not found on PATH"
 [[ -d "$IMAGES_DIR" ]] || die "image deploy dir not found: $IMAGES_DIR (build $IMAGE_NAME for $MACHINE first?)"
+
+# Signing: the same key signs each commit and the summary. A configured key
+# that gpg cannot find is an error, never a silent fall-back to unsigned.
+GPG_ARGS=()
+if [[ -n "$OSTREE_GPG_KEY" ]]; then
+    command -v gpg >/dev/null 2>&1 || die "gpg not found on PATH but OSTREE_GPG_KEY is set"
+    GPG_HOME_ARGS=()
+    [[ -n "$OSTREE_GPG_HOMEDIR" ]] && GPG_HOME_ARGS=(--homedir "$OSTREE_GPG_HOMEDIR")
+    gpg "${GPG_HOME_ARGS[@]}" --batch --list-secret-keys "$OSTREE_GPG_KEY" >/dev/null 2>&1 \
+        || die "GPG secret key not found: $OSTREE_GPG_KEY"
+    "$OSTREE_SIGN_BIN" gpg-sign --help >/dev/null 2>&1 \
+        || die "$OSTREE_SIGN_BIN has no gpg-sign command (built without gpgme); set OSTREE_SIGN_BIN"
+    GPG_ARGS=(--gpg-sign="$OSTREE_GPG_KEY")
+    [[ -n "$OSTREE_GPG_HOMEDIR" ]] && GPG_ARGS+=(--gpg-homedir="$OSTREE_GPG_HOMEDIR")
+elif [[ "$DO_SIGN_ONLY" -eq 1 ]]; then
+    die "--sign-only needs OSTREE_GPG_KEY"
+fi
 
 # aws CLI accepts --region on every call; omit it entirely when S3_REGION is
 # unset so the CLI's own configured default/profile region applies instead
@@ -228,15 +263,41 @@ EOF
         -s "$message" \
         --add-metadata-string=version="$version" \
         --tree=ref="$rev"
+    if [[ "${#GPG_ARGS[@]}" -gt 0 ]]; then
+        local new_rev
+        new_rev="$(ostree --repo="$OSTREE_STAGING_REPO" rev-parse "$OSTREE_PUBLISH_BRANCH")"
+        run "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" gpg-sign \
+            ${OSTREE_GPG_HOMEDIR:+--gpg-homedir="$OSTREE_GPG_HOMEDIR"} "$new_rev" "$OSTREE_GPG_KEY"
+    fi
     if [[ "$had_prior_commit" -eq 1 ]]; then
         run ostree --repo="$OSTREE_STAGING_REPO" static-delta generate "$OSTREE_PUBLISH_BRANCH"
     else
         echo "==> First publish on branch ${OSTREE_PUBLISH_BRANCH} — no prior commit to delta against, skipping static-delta generate"
     fi
-    run ostree --repo="$OSTREE_STAGING_REPO" summary -u
+    run "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" summary -u "${GPG_ARGS[@]}"
 
     run aws s3 sync "$OSTREE_STAGING_REPO" "s3://${S3_BUCKET}/${OSTREE_S3_PREFIX}" "${AWS_REGION_ARGS[@]}"
 
+    OSTREE_PUBLISHED=1
+}
+
+# --- Sign existing commits --------------------------------------------------
+# Adds a detached signature to every commit reachable from every ref in the
+# staging repo, then regenerates the signed summary and syncs. Commit
+# checksums do not change; signatures live in separate .commitmeta objects.
+sign_existing() {
+    [[ -f "${OSTREE_STAGING_REPO}/config" ]] || die "no staging repo at: $OSTREE_STAGING_REPO"
+    echo "==> Signing existing commits in ${OSTREE_STAGING_REPO} with ${OSTREE_GPG_KEY}"
+    local ref commit
+    while read -r ref; do
+        while read -r commit; do
+            echo "    ${ref} ${commit:0:12}"
+            run "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" gpg-sign \
+                ${OSTREE_GPG_HOMEDIR:+--gpg-homedir="$OSTREE_GPG_HOMEDIR"} "$commit" "$OSTREE_GPG_KEY"
+        done < <(ostree --repo="$OSTREE_STAGING_REPO" log "$ref" | awk '/^commit /{print $2}')
+    done < <(ostree --repo="$OSTREE_STAGING_REPO" refs)
+    run "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" summary -u "${GPG_ARGS[@]}"
+    run aws s3 sync "$OSTREE_STAGING_REPO" "s3://${S3_BUCKET}/${OSTREE_S3_PREFIX}" "${AWS_REGION_ARGS[@]}"
     OSTREE_PUBLISHED=1
 }
 
@@ -302,7 +363,11 @@ EOF
     TEZI_PUBLISHED=1
 }
 
-[[ "$DO_OSTREE" -eq 1 ]] && publish_ostree
+if [[ "$DO_SIGN_ONLY" -eq 1 ]]; then
+    sign_existing
+elif [[ "$DO_OSTREE" -eq 1 ]]; then
+    publish_ostree
+fi
 [[ "$DO_TEZI" -eq 1 ]] && publish_tezi
 
 # --- CloudFront invalidation -------------------------------------------------
