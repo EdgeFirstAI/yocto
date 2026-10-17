@@ -59,7 +59,7 @@ build-verdin-imx95/
 ## Build Configuration
 
 - **Distro:** `torizon`
-- **Images:** `torizon-minimal`, `torizon-docker`
+- **Image:** `torizon-edgefirst`, which requires Toradex's `torizon-docker` (set `EDGEFIRST_TORIZON_BASE = "minimal"` in `local.conf` for `torizon-minimal`). The stock images build unmodified.
 - **Machines:** `verdin-imx8mp`, `verdin-imx95`
 - **Setup script:** `setup-edgefirst`, which wraps Toradex's `setup-environment`.
 
@@ -67,7 +67,7 @@ build-verdin-imx95/
 repo init -u https://github.com/EdgeFirstAI/yocto.git -b torizon -m edgefirst-torizon-walnascar.xml
 repo sync
 MACHINE=verdin-imx8mp source setup-edgefirst build-verdin-imx8mp
-bitbake torizon-minimal
+bitbake torizon-edgefirst
 ```
 
 Toradex's `bblayers.conf` template has an `EXTRALAYERS ?= ""` hook that cannot be set from outside, and its checksum logic regenerates the file whenever `MACHINE`, `DISTRO`, `EULA` or its own scripts change. `setup-edgefirst` therefore defaults `DISTRO=torizon` and `EULA=1`, runs `setup-environment`, and re-adds `meta-edgefirst` and `meta-edgefirst-torizon` with `bitbake-layers add-layer` on every run. It also appends a `BBMASK` block to `conf/local.conf`, because the Torizon `local.conf` template resets `BBMASK` and a layer cannot set it. Everything else the build needs lives in `meta-edgefirst-torizon/conf/layer.conf`, so a build directory needs no hand-edited configuration.
@@ -83,7 +83,7 @@ Torizon OS is OSTree-based: the built image is committed into a local OSTree rep
 ### Repo layout
 
 - BitBake commits the build into `build-<machine>/deploy/images/<machine>/ostree_repo`.
-- Refs are named `refs/heads/0/<machine>/<distro>/<image>/<branch>`, e.g. `refs/heads/0/verdin-imx8mp/torizon/torizon-minimal/testing`.
+- Refs are named `refs/heads/0/<machine>/<distro>/<image>/<branch>`, e.g. `refs/heads/0/verdin-imx8mp/torizon/edgefirst/testing`. `torizon-edgefirst` overrides the `<image>` segment to `edgefirst` and maps the Development purpose to `develop`, so the branches are `develop`, `testing` and `release`.
 - The `ostree` binary to use is the one BitBake builds, not any host-installed one: `build-<machine>/tmp/sysroots-components/x86_64/ostree-native/usr/bin/ostree`.
 
 ### Inspecting a commit without flashing anything
@@ -93,7 +93,7 @@ You can validate a build's actual content directly from the OSTree repo, before 
 ```bash
 REPO=build-verdin-imx8mp/deploy/images/verdin-imx8mp/ostree_repo
 OSTREE=build-verdin-imx8mp/tmp/sysroots-components/x86_64/ostree-native/usr/bin/ostree
-COMMIT=$(cat "$REPO/refs/heads/0/verdin-imx8mp/torizon/torizon-minimal/testing")
+COMMIT=$(cat "$REPO/refs/heads/0/verdin-imx8mp/torizon/edgefirst/testing")
 "$OSTREE" --repo="$REPO" ls -R "$COMMIT" /usr/lib/modules
 "$OSTREE" --repo="$REPO" cat "$COMMIT" /usr/lib/passwd
 ```
@@ -128,7 +128,7 @@ A green build is not sufficient proof the image is bootable. Confirm the initram
 
 If it reports ~1084 bytes, do not push or flash it — the target kernel will panic early and U-Boot will silently roll back (`bootcount > bootlimit`, `rollback=1`), leaving the device on its old image with no obvious error on your end.
 
-**Root cause of the empty-initramfs failure mode:** `ostree-kernel-initramfs`'s `do_install` copies the deploy-dir initramfs image into the committed `/usr/lib/modules/<kver>/initramfs.img`, and its task hash does not depend on that file's content. If the initramfs image recipe (`initramfs-ostree-torizon-image`) is rebuilt and ends up with a different (or momentarily tiny) output, `ostree-kernel-initramfs` can keep its cached copy, so the commit carries a stub of about 1 KB even though `deploy/` holds the full 25 MB cpio. When the committed `initramfs.img` is tiny, run `bitbake torizon-docker initramfs-ostree-torizon-image ostree-kernel-initramfs -c cleansstate`, then a single `bitbake torizon-docker`, and repeat the verification.
+**Root cause of the empty-initramfs failure mode:** `ostree-kernel-initramfs`'s `do_install` copies the deploy-dir initramfs image into the committed `/usr/lib/modules/<kver>/initramfs.img`, and its task hash does not depend on that file's content. If the initramfs image recipe (`initramfs-ostree-torizon-image`) is rebuilt and ends up with a different (or momentarily tiny) output, `ostree-kernel-initramfs` can keep its cached copy, so the commit carries a stub of about 1 KB even though `deploy/` holds the full 25 MB cpio. When the committed `initramfs.img` is tiny, run `bitbake torizon-edgefirst initramfs-ostree-torizon-image ostree-kernel-initramfs -c cleansstate`, then a single `bitbake torizon-docker`, and repeat the verification.
 
 ### MANDATORY: do not run do_image twice against the same rootfs
 
@@ -162,7 +162,7 @@ Generic and shared by every EdgeFirst platform. Anything that is not specific to
 
 Everything specific to Torizon on Verdin:
 
-- `packagegroup-edgefirst-torizon`, installed into `torizon-minimal` and `torizon-docker` by their bbappends.
+- `packagegroup-edgefirst-torizon`, installed into `torizon-edgefirst`.
 - `linux-toradex-imx_%.bbappend`, which applies `meta-edgefirst`'s Neutron dma-buf patches to Toradex's kernel recipe (`meta-edgefirst`'s `linux-imx` bbappend never matches it). The patches are read from the `meta-edgefirst` checkout.
 - `device-tree-overlays-imx_%.bbappend`, which builds `verdin-imx95_efpi-npu-dma-512m_overlay.dtbo` (the `/reserved-memory/npu-dma` Neutron pool, 128 MiB to 512 MiB) and appends it to `TEZI_EXTERNAL_KERNEL_DEVICETREE_BOOT` for `verdin-imx95`. After a reboot `/proc/device-tree/reserved-memory/npu-dma/size` reads `00 00 00 00 20 00 00 00`. The i.MX 8M Plus has no dedicated NPU pool; its VX NPU allocates from the shared `linux,cma` region.
 - Bbappends that build `tensorflow-lite-vx-delegate` and `tensorflow-lite-neutron-delegate` from the rolling `edgefirst` branches of their forks. `meta-edgefirst` selects the frozen `edgefirst-1.2.3` branches on walnascar, and the Torizon layer's higher priority makes its overrides run last. `litert-vx-delegate` is not overridden because the newer branch needs the LiteRT 6.18 layout and no image installs it. Bump the `SRCREV` pins when the fork branches advance.

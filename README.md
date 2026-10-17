@@ -31,7 +31,7 @@ repo init -u https://github.com/EdgeFirstAI/yocto.git -b torizon -m edgefirst-to
 repo sync
 
 MACHINE=verdin-imx8mp source setup-edgefirst build-verdin-imx8mp
-bitbake torizon-minimal
+bitbake torizon-edgefirst
 ```
 
 `setup-edgefirst` runs Toradex's `setup-environment` with `DISTRO=torizon` and `EULA=1`, then adds the two EdgeFirst layers to `conf/bblayers.conf`.
@@ -46,7 +46,9 @@ Source it again in any new shell to re-enter the build environment.
 
 ## Images
 
-`torizon-minimal` and `torizon-docker` both install `packagegroup-edgefirst-torizon`.
+`torizon-edgefirst` is Toradex's `torizon-docker` plus `packagegroup-edgefirst-torizon`.
+Set `EDGEFIRST_TORIZON_BASE = "minimal"` in `local.conf` to extend `torizon-minimal` instead.
+Its OSTree branch is `0/<machine>/torizon/edgefirst/<develop|testing|release>`.
 
 ## Changelog
 

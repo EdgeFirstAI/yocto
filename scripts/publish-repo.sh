@@ -55,7 +55,7 @@
 #
 # Required environment variables:
 #   MACHINE                     Target machine name (e.g. verdin-imx8mp)
-#   IMAGE_NAME                  Image recipe base name (e.g. torizon-minimal)
+#   IMAGE_NAME                  Image recipe base name (e.g. torizon-edgefirst)
 #                                — used for the TEZI tarball name pattern and
 #                                as the default OSTree branch/message prefix
 #   IMAGES_DIR                  Path to the build's deploy/images/$MACHINE
