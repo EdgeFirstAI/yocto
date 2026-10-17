@@ -104,7 +104,7 @@
 	<project name="meta-qt6-phytec" path="sources/meta-qt6-phytec"/>
 
 	<!-- EdgeFirst layers -->
-	<project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="c9491ea327fe60e952be1c001be5228795055b99" upstream="main"/>
+	<project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="4ef7c7377cbb14a2d7675e28377100cee7e815d8" upstream="main"/>
 	<project name="meta-edgefirst-phytec" path="sources/meta-edgefirst-phytec" remote="edgefirst" revision="c6dc24c8bdf077213080dd638f31e90d70e4beab" upstream="main"/>
 
 	<!-- Manifest repo self-reference for tooling; not a layer -->
