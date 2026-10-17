@@ -98,6 +98,26 @@ COMMIT=$(cat "$REPO/refs/heads/0/verdin-imx8mp/torizon/torizon-minimal/testing")
 "$OSTREE" --repo="$REPO" cat "$COMMIT" /usr/lib/passwd
 ```
 
+### MANDATORY: pre-publish checklist for every OSTree commit
+
+Run all of these against the committed ref before running `publish-repo.sh` or flashing, for both machines. A green build does not prove any of them, and the failures below recur on Torizon builds.
+
+```bash
+R=build-<machine>/deploy/images/<machine>/ostree_repo
+OSTREE=build-<machine>/tmp/sysroots-components/x86_64/ostree-native/usr/bin/ostree
+C=$(cat "$R/refs/heads/0/<machine>/torizon/edgefirst/testing")
+"$OSTREE" --repo="$R" ls -R "$C" /usr/lib/modules | grep initramfs.img      # tens of MB, not ~1 KB
+"$OSTREE" --repo="$R" cat "$C" /usr/lib/passwd | cut -d: -f1 | tr '\n' ' '   # full account list, including messagebus
+"$OSTREE" --repo="$R" ls "$C" /usr/bin | grep -E 'docker$|edgefirst'         # docker, edgefirst-client, edgefirst-profiler
+```
+
+- `/usr/lib/passwd` must list the system accounts (`messagebus`, `systemd-resolve`, `sshd`, `avahi` and the rest), not just `torizon`. A reduced file breaks D-Bus, NetworkManager and networking on the target.
+- Also confirm the delegate for the machine is in the image manifest and that the kernel tree carries the Neutron dma-buf commits on `verdin-imx95`.
+- **Never retry a failed build in place.** A `do_image_ostreecommit` basehash or taskhash error leaves the rootfs already reduced, and the retry runs `do_image` a second time, which silently drops every account but `torizon`. After any failure at or after `do_image`, run `bitbake <image> -c cleansstate` and then a single `bitbake <image>`, and repeat the checklist.
+- Avoid committing to layer repositories while a build runs, and clear `build-<machine>/tmp/cache/bb_cache.dat*` when layer git state has changed since the last parse.
+- A stale `pseudo-rootfs/` directory in the image work dir makes `do_rootfs` fail with `chown: invalid user: 'root:root'`. `cleansstate` on the image removes it.
+- Use absolute paths in build scripts. `setup-environment` changes into the build directory, so relative log paths fail silently.
+
 ### MANDATORY: verify the initramfs before every push or flash
 
 A green build is not sufficient proof the image is bootable. Confirm the initramfs baked into the commit is full size (tens of MB), not ~1KB:
@@ -108,7 +128,7 @@ A green build is not sufficient proof the image is bootable. Confirm the initram
 
 If it reports ~1084 bytes, do not push or flash it — the target kernel will panic early and U-Boot will silently roll back (`bootcount > bootlimit`, `rollback=1`), leaving the device on its old image with no obvious error on your end.
 
-**Root cause of the empty-initramfs failure mode:** `ostree-kernel-initramfs`'s `do_install` copies the deploy-dir initramfs image into the committed `/usr/lib/modules/<kver>/initramfs.img`. If the initramfs image recipe (e.g. `initramfs-ostree-torizon-image`) gets `cleansstate`'d in the **same** `bitbake` invocation as `ostree-kernel-initramfs`, the copy can race and catch the deploy file while it is momentarily empty. Never `cleansstate` the initramfs image alongside `ostree-kernel-initramfs`; if you need to force a rebuild, keep the initramfs image stable and rebuild only its consumers, then re-run the verification above.
+**Root cause of the empty-initramfs failure mode:** `ostree-kernel-initramfs`'s `do_install` copies the deploy-dir initramfs image into the committed `/usr/lib/modules/<kver>/initramfs.img`, and its task hash does not depend on that file's content. If the initramfs image recipe (`initramfs-ostree-torizon-image`) is rebuilt and ends up with a different (or momentarily tiny) output, `ostree-kernel-initramfs` can keep its cached copy, so the commit carries a stub of about 1 KB even though `deploy/` holds the full 25 MB cpio. When the committed `initramfs.img` is tiny, run `bitbake torizon-docker initramfs-ostree-torizon-image ostree-kernel-initramfs -c cleansstate`, then a single `bitbake torizon-docker`, and repeat the verification.
 
 ### MANDATORY: do not run do_image twice against the same rootfs
 
@@ -116,7 +136,7 @@ Torizon's `nss_altfiles_set_users_groups` (triggered by the `stateless-system` d
 
 ### Basehash "not deterministic" on do_image_ostreecommit
 
-Changing git state (e.g. committing to a layer) under a stale parse cache can trip this — the build exits non-zero even though all individual tasks report success. Fix: `rm -f build-<machine>/tmp/cache/bb_cache.dat*`, then rebuild.
+Changing git state (e.g. committing to a layer) under a stale parse cache can trip this — the build exits non-zero even though all individual tasks report success. Fix: `rm -f build-<machine>/tmp/cache/bb_cache.dat*`, then `bitbake <image> -c cleansstate` and a single `bitbake <image>`. Rebuilding in place after the failure runs `do_image` twice and drops the system accounts, as described above.
 
 ### Deploying to Torizon Cloud OTA
 
@@ -143,7 +163,9 @@ Generic and shared by every EdgeFirst platform. Anything that is not specific to
 Everything specific to Torizon on Verdin:
 
 - `packagegroup-edgefirst-torizon`, installed into `torizon-minimal` and `torizon-docker` by their bbappends.
-- `linux-toradex-imx_%.bbappend`, which applies `meta-edgefirst`'s Neutron dma-buf patches to Toradex's kernel recipe (`meta-edgefirst`'s `linux-imx` bbappend never matches it). The patches are read from the `meta-edgefirst` checkout. `0001-npu-dma-512m.patch` is kept but disabled, because the `torizon-kernel-meta` revision `verdin-imx95` needs declares the Neutron memory region through a devicetree overlay and the `npu_dma` node the patch edits no longer exists.
+- `linux-toradex-imx_%.bbappend`, which applies `meta-edgefirst`'s Neutron dma-buf patches to Toradex's kernel recipe (`meta-edgefirst`'s `linux-imx` bbappend never matches it). The patches are read from the `meta-edgefirst` checkout.
+- `device-tree-overlays-imx_%.bbappend`, which builds `verdin-imx95_efpi-npu-dma-512m_overlay.dtbo` (the `/reserved-memory/npu-dma` Neutron pool, 128 MiB to 512 MiB) and appends it to `TEZI_EXTERNAL_KERNEL_DEVICETREE_BOOT` for `verdin-imx95`. After a reboot `/proc/device-tree/reserved-memory/npu-dma/size` reads `00 00 00 00 20 00 00 00`. The i.MX 8M Plus has no dedicated NPU pool; its VX NPU allocates from the shared `linux,cma` region.
+- Bbappends that build `tensorflow-lite-vx-delegate` and `tensorflow-lite-neutron-delegate` from the rolling `edgefirst` branches of their forks. `meta-edgefirst` selects the frozen `edgefirst-1.2.3` branches on walnascar, and the Torizon layer's higher priority makes its overrides run last. `litert-vx-delegate` is not overridden because the newer branch needs the LiteRT 6.18 layout and no image installs it. Bump the `SRCREV` pins when the fork branches advance.
 - Kernel revision pins that carry the Verdin device trees, the `tim-vx` and `aktualizr-torizon` build fixes, and the settings that remove dependencies on layers this build does not carry.
 
 When porting a `meta-edgefirst` hardware patch to Torizon, check whether it targets `linux-imx`, which needs retargeting onto `linux-toradex-imx`. The NPU delegate recipes keep their upstream names on Torizon, so `meta-edgefirst`'s bbappends on them apply unchanged.
