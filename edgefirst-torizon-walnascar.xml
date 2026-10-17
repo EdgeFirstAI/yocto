@@ -59,7 +59,7 @@
   <!--  non-public Ara-2 runtime mirror.                              -->
   <!-- ============================================================== -->
 
-  <project name="meta-edgefirst" path="layers/meta-edgefirst" remote="edgefirst" revision="c9491ea327fe60e952be1c001be5228795055b99" upstream="main"/>
+  <project name="meta-edgefirst" path="layers/meta-edgefirst" remote="edgefirst" revision="4ef7c7377cbb14a2d7675e28377100cee7e815d8" upstream="main"/>
   <project name="meta-edgefirst-torizon" path="layers/meta-edgefirst-torizon" remote="edgefirst" revision="08d7410083d3810e0204a93d49454f7588651ab2" upstream="main"/>
 
   <!-- Manifest repo self-reference for tooling, pinned to the torizon  -->
