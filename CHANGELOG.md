@@ -12,9 +12,9 @@ Package version tables live in the [meta-edgefirst changelog](https://github.com
 
 ### Manifest
 
-- `meta-edgefirst` is tracked from `main` (`c9491ea`) instead of the `edgefirst-1.2.3` branch.
+- `meta-edgefirst` is tracked from `main` (`4ef7c73`) instead of the `edgefirst-1.2.3` branch.
   This brings the Neutron NPU runtime to eIQ Neutron SDK 3.2.3, `edgefirst-client` 2.17.0, `edgefirst-profiler` 1.19.0 and edgefirst-hal 0.28.3.
-- `meta-edgefirst-torizon` is tracked from `main` (`08d7410`).
+- `meta-edgefirst-torizon` is tracked from `main` (`3e56ea2`).
 - The Torizon walnascar projects keep the revisions from Toradex's Torizon OS 7.0.0 walnascar manifest.
 
 ### Layers
@@ -23,7 +23,7 @@ Package version tables live in the [meta-edgefirst changelog](https://github.com
   It reuses the Neutron dma-buf kernel patches from `meta-edgefirst` instead of carrying copies, and drops the pseudo 1.9.8 override and the `tensorflow-lite-neutron-delegate` bbappend, which `meta-edgefirst` now provides.
 - `packagegroup-edgefirst-torizon` composes `packagegroup-edgefirst`, `packagegroup-edgefirst-npu` and `packagegroup-edgefirst-studio` and is installed into the new `torizon-edgefirst` image.
   The images no longer install `packagegroup-fsl-ml`, so `nnstreamer`, `tvm` and the other i.MX machine-learning packages are gone; the TensorFlow Lite delegates remain.
-- The VX and Neutron TensorFlow Lite delegates build from the rolling `edgefirst` branches of `tflite-vx-delegate-imx` (`6f8189f`) and `tflite-neutron-delegate` (`dd81103`) instead of the frozen `edgefirst-1.2.3` branches that `meta-edgefirst` selects for walnascar.
+- The VX and Neutron TensorFlow Lite delegates build from the rolling `edgefirst` branches of `tflite-vx-delegate-imx` (`6f8189f`) and `tflite-neutron-delegate` (`dd81103`) on every Yocto series, selected by `meta-edgefirst` itself.
   This brings in the galcore dma-buf leak fix and the camera adaptor changes.
 - `torizon-edgefirst` is the EdgeFirst image.
   It requires Toradex's `torizon-docker` recipe, or `torizon-minimal` when `EDGEFIRST_TORIZON_BASE = "minimal"` is set in `local.conf`, and publishes the OSTree branch `0/<machine>/torizon/edgefirst/<purpose>` with `develop`, `testing` or `release` as the purpose.
