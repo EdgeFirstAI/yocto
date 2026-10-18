@@ -105,7 +105,7 @@
   <project path="sources/meta-edgefirst-ezurio"
            name="meta-edgefirst-ezurio"
            remote="edgefirst"
-           revision="24d636bcb49da8107b8b028be6e3708b3cf035ab"
+           revision="ce0bf89461fc0255a820147b96212a2867f3ca79"
            upstream="main"/>
 
   <!-- Manifest repo self-reference for tooling; not a layer -->
