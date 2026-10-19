@@ -3,7 +3,7 @@
 All notable changes to the `torizon` branch of EdgeFirstAI/yocto are documented here.
 Package version tables live in the [meta-edgefirst changelog](https://github.com/EdgeFirstAI/meta-edgefirst/blob/main/CHANGELOG.md).
 
-## Unreleased
+## [2026.10.0-rc0] - 2026-10-19
 
 ### Branch
 
@@ -14,7 +14,7 @@ Package version tables live in the [meta-edgefirst changelog](https://github.com
 
 - `meta-edgefirst` is tracked from `main` (`4ef7c73`) instead of the `edgefirst-1.2.3` branch.
   This brings the Neutron NPU runtime to eIQ Neutron SDK 3.2.3, `edgefirst-client` 2.17.0, `edgefirst-profiler` 1.19.0 and edgefirst-hal 0.28.3.
-- `meta-edgefirst-torizon` is tracked from `main` (`0e23d0e`).
+- `meta-edgefirst-torizon` is tracked from `main` (`df6790f`).
 - The Torizon walnascar projects keep the revisions from Toradex's Torizon OS 7.0.0 walnascar manifest.
 
 ### Layers
@@ -35,6 +35,9 @@ Package version tables live in the [meta-edgefirst changelog](https://github.com
   Without the handshake the 3.2.x firmware reply `0xA1` made every inference take the failed-reset path.
 - The Verdin i.MX 95 Neutron NPU `/reserved-memory/npu-dma` pool grows from 128 MiB to 512 MiB through the `verdin-imx95_efpi-npu-dma-512m_overlay.dtbo` devicetree overlay, which is built from the layer and listed in `overlays.txt`.
   The disabled kernel patch that targeted the same pool is removed.
+- `packagegroup-edgefirst-torizon` installs the GPU runtime libraries the HAL loads: `libEGL`, `libGLESv2`, `libgbm` and `libg2d` from the Vivante stack on the Verdin i.MX 8M Plus, and the `mali-imx` EGL, GLES and GBM libraries on the Verdin i.MX 95.
+  Before this the images carried only the development packages on i.MX 8M Plus and only `libmali` on i.MX 95, so `edgefirst-profiler` could not create a GL context and preprocessed on the CPU.
+- `edgefirst-udev-rules` gives the `video` group access to `/dev/neutron0` on the Verdin i.MX 95, so the Neutron delegate and `edgefirst-profiler` run without root.
 - The kernel revision pins, the `ara2` removals, the profiler overrides and the `sota` image-install removals move from `local.conf` into `meta-edgefirst-torizon/conf/layer.conf`.
 
 ### Documentation

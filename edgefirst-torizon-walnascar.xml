@@ -60,7 +60,7 @@
   <!-- ============================================================== -->
 
   <project name="meta-edgefirst" path="layers/meta-edgefirst" remote="edgefirst" revision="4ef7c7377cbb14a2d7675e28377100cee7e815d8" upstream="main"/>
-  <project name="meta-edgefirst-torizon" path="layers/meta-edgefirst-torizon" remote="edgefirst" revision="0e23d0e3528437a341200071fc4e0cb04002b3da" upstream="main"/>
+  <project name="meta-edgefirst-torizon" path="layers/meta-edgefirst-torizon" remote="edgefirst" revision="df6790f0eb67b9365c2f7ef016303df5456b4de1" upstream="main"/>
 
   <!-- Manifest repo self-reference for tooling, pinned to the torizon  -->
   <!-- branch (not main) so README.md/.github come from this branch.   -->
