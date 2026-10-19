@@ -10,6 +10,11 @@
 export DISTRO="${DISTRO:-torizon}"
 export EULA="${EULA:-1}"
 
+# The release version, YYYY.MM.PATCH with -rcN on a release candidate. It is the
+# image's DISTRO_VERSION, so it names the OSTree commit, os-release and the
+# TEZI image. Bump it with each release.
+EDGEFIRST_VERSION="${EDGEFIRST_VERSION:-2026.10.0-rc1}"
+
 source setup-environment "$@" || return
 
 for layer in meta-edgefirst meta-edgefirst-torizon; do
@@ -27,4 +32,13 @@ grep -q "^# EdgeFirst" conf/local.conf || cat >> conf/local.conf <<'EOT'
 # EdgeFirst
 BBMASK += "meta-edgefirst/recipes-gstreamer/imx-nnstreamer-examples"
 BBMASK += "meta-edgefirst/recipes-qt/packagegroups/packagegroup-qt6-addons"
+EOT
+
+# DISTRO_VERSION is TDX_RELEASE + TDX_PRERELEASE + TDX_BUILD; local.conf is
+# parsed before the distro, so only these ?= knobs can carry the version.
+sed -i '/^TDX_RELEASE = /d;/^TDX_PRERELEASE = /d;/^TDX_BUILD = /d' conf/local.conf
+cat >> conf/local.conf <<EOT
+TDX_RELEASE = "${EDGEFIRST_VERSION%%-*}"
+TDX_PRERELEASE = "$([[ "$EDGEFIRST_VERSION" == *-* ]] && echo "-${EDGEFIRST_VERSION#*-}")"
+TDX_BUILD = ""
 EOT

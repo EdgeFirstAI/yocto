@@ -3,6 +3,28 @@
 All notable changes to the `torizon` branch of EdgeFirstAI/yocto are documented here.
 Package version tables live in the [meta-edgefirst changelog](https://github.com/EdgeFirstAI/meta-edgefirst/blob/main/CHANGELOG.md).
 
+## [2026.10.0-rc1] - 2026-10-19
+
+### Manifest
+
+- `meta-edgefirst-torizon` is tracked from `main` (`28f2ec0`).
+
+### Layers
+
+- Devices verify OSTree commits and the repository summary with ed25519.
+  ostree is built with `ed25519-openssl`, and the image ships the `edgefirst` remote with `sign-verify=ed25519` and `sign-verify-summary=ed25519` together with the public key the repository is signed with.
+  The image also defines the same remote as `torizon`, the name the installer records in the origin of a freshly flashed device.
+- The OTA and TEZI image now records the `edgefirst` OSTree branch in the origin of a flashed device (`0/<machine>/torizon/edgefirst/<purpose>`) instead of `torizon-edgefirst`.
+- The installer lists the image as "Torizon OS with the EdgeFirst Perception Foundation" instead of plain Torizon OS.
+
+### Tooling
+
+- `setup-edgefirst` sets the release version, in `YYYY.MM.PATCH` form with `-rcN` on a release candidate, through `TDX_RELEASE`, `TDX_PRERELEASE` and `TDX_BUILD`.
+  It becomes `DISTRO_VERSION`, so the OSTree commit subject, `os-release` and the TEZI image version carry it.
+  `EDGEFIRST_VERSION` overrides the default.
+- `publish-repo.sh` signs published OSTree commits and the repository summary with ed25519 when `OSTREE_ED25519_SECRET_FILE` is set, and verifies each signature against `OSTREE_ED25519_PUBLIC_FILE`.
+  It cannot sign with GPG and ed25519 in the same run, and `--sign-only` signs every commit already in the staging repository.
+
 ## [2026.10.0-rc0] - 2026-10-19
 
 ### Branch

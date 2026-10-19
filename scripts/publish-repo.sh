@@ -90,9 +90,21 @@
 #   OSTREE_GPG_HOMEDIR          default: unset (gpg's own default). GPG home
 #                                directory that holds OSTREE_GPG_KEY
 #   OSTREE_SIGN_BIN             default: ostree. The ostree binary used for the
-#                                signing steps; it must be built with gpgme.
-#                                Yocto's ostree-native is not, so point this
-#                                at the host's /usr/bin/ostree
+#                                signing steps; it must be built with gpgme
+#                                when OSTREE_GPG_KEY is set, and with ed25519
+#                                for OSTREE_ED25519_SECRET_FILE. Yocto's
+#                                ostree-native has ed25519 (ed25519-openssl)
+#                                and no gpgme; the host's /usr/bin/ostree has
+#                                gpgme and may lack ed25519
+#   OSTREE_ED25519_SECRET_FILE  default: unset. File holding the base64
+#                                ed25519 secret key (64 bytes: seed followed by
+#                                public key). Every new commit and the repo
+#                                summary are signed with it; devices enforce
+#                                this signature with sign-verify=ed25519.
+#                                Mutually exclusive with OSTREE_GPG_KEY
+#   OSTREE_ED25519_PUBLIC_FILE  default: unset. File holding the matching base64
+#                                public key; each signed commit is verified
+#                                against it before it is published
 #   CHANNEL                     default: develop
 #   OSTREE_PUBLISH_BRANCH       default: $IMAGE_NAME/$MACHINE/$CHANNEL
 #   VERSION                     default: $(date +%Y.%m.%d)-$MACHINE
@@ -118,6 +130,8 @@ CHANNEL="${CHANNEL:-develop}"
 OSTREE_GPG_KEY="${OSTREE_GPG_KEY:-}"
 OSTREE_GPG_HOMEDIR="${OSTREE_GPG_HOMEDIR:-}"
 OSTREE_SIGN_BIN="${OSTREE_SIGN_BIN:-ostree}"
+OSTREE_ED25519_SECRET_FILE="${OSTREE_ED25519_SECRET_FILE:-}"
+OSTREE_ED25519_PUBLIC_FILE="${OSTREE_ED25519_PUBLIC_FILE:-}"
 
 DO_OSTREE=1
 DO_TEZI=1
@@ -147,6 +161,32 @@ run() {
     else
         "$@"
     fi
+}
+
+# Adds an ed25519 signature to one commit and, when the public key is known,
+# verifies it. A no-op when no ed25519 key is configured.
+sign_commit_ed25519() {
+    local rev="$1"
+    [[ -n "$ED25519_SECRET" ]] || return 0
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        echo "    [dry-run] $OSTREE_SIGN_BIN --repo=$OSTREE_STAGING_REPO sign --sign-type=ed25519 $rev <secret>"
+        return 0
+    fi
+    "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" sign --sign-type=ed25519 "$rev" "$ED25519_SECRET"
+    if [[ -n "$OSTREE_ED25519_PUBLIC_FILE" ]]; then
+        "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" sign --sign-type=ed25519 --verify "$rev" \
+            "$(< "$OSTREE_ED25519_PUBLIC_FILE")" >/dev/null \
+            || die "ed25519 signature on $rev does not verify against $OSTREE_ED25519_PUBLIC_FILE"
+    fi
+}
+
+# Regenerates the repository summary with every configured signature.
+update_summary() {
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        echo "    [dry-run] $OSTREE_SIGN_BIN --repo=$OSTREE_STAGING_REPO summary -u ${GPG_ARGS[*]:-} ${ED25519_ARGS[*]:+--sign-type=ed25519 --sign=<secret>}"
+        return 0
+    fi
+    "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" summary -u "${GPG_ARGS[@]}" "${ED25519_ARGS[@]}"
 }
 
 # --- Preflight ----------------------------------------------------------------
@@ -190,8 +230,33 @@ if [[ -n "$OSTREE_GPG_KEY" ]]; then
         || die "$OSTREE_SIGN_BIN has no gpg-sign command (built without gpgme); set OSTREE_SIGN_BIN"
     GPG_ARGS=(--gpg-sign="$OSTREE_GPG_KEY")
     [[ -n "$OSTREE_GPG_HOMEDIR" ]] && GPG_ARGS+=(--gpg-homedir="$OSTREE_GPG_HOMEDIR")
-elif [[ "$DO_SIGN_ONLY" -eq 1 ]]; then
-    die "--sign-only needs OSTREE_GPG_KEY"
+fi
+
+# ed25519 signing: the secret key is read once and handed to ostree as the
+# KEY-ID argument, which is how `ostree sign` takes it. It is never echoed,
+# not even in --dry-run.
+ED25519_SECRET=""
+ED25519_ARGS=()
+if [[ -n "$OSTREE_ED25519_SECRET_FILE" ]]; then
+    [[ -z "$OSTREE_GPG_KEY" ]] || die "OSTREE_GPG_KEY and OSTREE_ED25519_SECRET_FILE are mutually exclusive: no single ostree binary signs with both"
+    [[ -r "$OSTREE_ED25519_SECRET_FILE" ]] || die "cannot read OSTREE_ED25519_SECRET_FILE: $OSTREE_ED25519_SECRET_FILE"
+    ED25519_SECRET="$(< "$OSTREE_ED25519_SECRET_FILE")"
+    [[ "$(printf '%s' "$ED25519_SECRET" | base64 -d 2>/dev/null | wc -c)" -eq 64 ]] \
+        || die "OSTREE_ED25519_SECRET_FILE is not a base64 64-byte ed25519 secret key"
+    if [[ -n "$OSTREE_ED25519_PUBLIC_FILE" ]]; then
+        [[ -r "$OSTREE_ED25519_PUBLIC_FILE" ]] || die "cannot read OSTREE_ED25519_PUBLIC_FILE: $OSTREE_ED25519_PUBLIC_FILE"
+    fi
+    "$OSTREE_SIGN_BIN" sign --help >/dev/null 2>&1 \
+        || die "$OSTREE_SIGN_BIN has no sign command; set OSTREE_SIGN_BIN"
+    probe="$(mktemp -d)"
+    "$OSTREE_SIGN_BIN" --repo="$probe/r" init --mode=archive >/dev/null 2>&1
+    "$OSTREE_SIGN_BIN" --repo="$probe/r" sign --sign-type=ed25519 0000000000000000000000000000000000000000000000000000000000000000 "$ED25519_SECRET" 2>&1 \
+        | grep -q "not implemented" && { rm -rf "$probe"; die "$OSTREE_SIGN_BIN is built without ed25519 support; set OSTREE_SIGN_BIN"; }
+    rm -rf "$probe"
+    ED25519_ARGS=(--sign-type=ed25519 "--sign=${ED25519_SECRET}")
+fi
+if [[ "$DO_SIGN_ONLY" -eq 1 && "${#GPG_ARGS[@]}" -eq 0 && "${#ED25519_ARGS[@]}" -eq 0 ]]; then
+    die "--sign-only needs OSTREE_GPG_KEY or OSTREE_ED25519_SECRET_FILE"
 fi
 
 # aws CLI accepts --region on every call; omit it entirely when S3_REGION is
@@ -263,18 +328,19 @@ EOF
         -s "$message" \
         --add-metadata-string=version="$version" \
         --tree=ref="$rev"
+    local new_rev
+    new_rev="$(ostree --repo="$OSTREE_STAGING_REPO" rev-parse "$OSTREE_PUBLISH_BRANCH")"
     if [[ "${#GPG_ARGS[@]}" -gt 0 ]]; then
-        local new_rev
-        new_rev="$(ostree --repo="$OSTREE_STAGING_REPO" rev-parse "$OSTREE_PUBLISH_BRANCH")"
         run "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" gpg-sign \
             ${OSTREE_GPG_HOMEDIR:+--gpg-homedir="$OSTREE_GPG_HOMEDIR"} "$new_rev" "$OSTREE_GPG_KEY"
     fi
+    sign_commit_ed25519 "$new_rev"
     if [[ "$had_prior_commit" -eq 1 ]]; then
         run ostree --repo="$OSTREE_STAGING_REPO" static-delta generate "$OSTREE_PUBLISH_BRANCH"
     else
         echo "==> First publish on branch ${OSTREE_PUBLISH_BRANCH} — no prior commit to delta against, skipping static-delta generate"
     fi
-    run "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" summary -u "${GPG_ARGS[@]}"
+    update_summary
 
     run aws s3 sync "$OSTREE_STAGING_REPO" "s3://${S3_BUCKET}/${OSTREE_S3_PREFIX}" "${AWS_REGION_ARGS[@]}"
 
@@ -287,16 +353,19 @@ EOF
 # checksums do not change; signatures live in separate .commitmeta objects.
 sign_existing() {
     [[ -f "${OSTREE_STAGING_REPO}/config" ]] || die "no staging repo at: $OSTREE_STAGING_REPO"
-    echo "==> Signing existing commits in ${OSTREE_STAGING_REPO} with ${OSTREE_GPG_KEY}"
+    echo "==> Signing existing commits in ${OSTREE_STAGING_REPO}"
     local ref commit
     while read -r ref; do
         while read -r commit; do
             echo "    ${ref} ${commit:0:12}"
-            run "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" gpg-sign \
-                ${OSTREE_GPG_HOMEDIR:+--gpg-homedir="$OSTREE_GPG_HOMEDIR"} "$commit" "$OSTREE_GPG_KEY"
+            if [[ "${#GPG_ARGS[@]}" -gt 0 ]]; then
+                run "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" gpg-sign \
+                    ${OSTREE_GPG_HOMEDIR:+--gpg-homedir="$OSTREE_GPG_HOMEDIR"} "$commit" "$OSTREE_GPG_KEY"
+            fi
+            sign_commit_ed25519 "$commit"
         done < <(ostree --repo="$OSTREE_STAGING_REPO" log "$ref" | awk '/^commit /{print $2}')
     done < <(ostree --repo="$OSTREE_STAGING_REPO" refs)
-    run "$OSTREE_SIGN_BIN" --repo="$OSTREE_STAGING_REPO" summary -u "${GPG_ARGS[@]}"
+    update_summary
     run aws s3 sync "$OSTREE_STAGING_REPO" "s3://${S3_BUCKET}/${OSTREE_S3_PREFIX}" "${AWS_REGION_ARGS[@]}"
     OSTREE_PUBLISHED=1
 }
