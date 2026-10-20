@@ -23,6 +23,39 @@ This branch is **EdgeFirst Yocto for Ezurio**, one of the EdgeFirst Yocto produc
 
 There is no GStreamer, NNStreamer, ONNX or Python. The root filesystem is a read-only, dm-verity protected squashfs that fits comfortably in Ezurio's 512 MiB slot.
 
+## Relationship to Ezurio's EZ BSP
+
+EdgeFirst Yocto for Ezurio is built on Ezurio's board support package, [EZ BSP](https://www.ezurio.com/software/ez-bsp), the Linux stack Ezurio ships on its SOMs. It is based on Ezurio's release `SUMMIT-REL-6.16.0.27`, which keeps the Summit names in Ezurio's repositories.
+
+Au-Zone Technologies provides this release as open source in support of the [EdgeFirst Model Zoo](https://huggingface.co/spaces/EdgeFirst/Models) and the [EdgeFirst Perception Index](https://www.au-zone.com/efpi-ezurio). It adds NPU and GPU enablement, backports, fixes and the EdgeFirst stack for the Nitrogen SMARC i.MX 8M Plus and i.MX 95. It is offered without support. Au-Zone offers commercial support through its Commercial Support and Professional Services.
+
+### What is the same
+
+| EZ BSP | EdgeFirst Yocto for Ezurio |
+|---|---|
+| Built on NXP's BSP | The same NXP 6.12.49-2.2.0 base, Yocto 5.2 walnascar and Ezurio kernel `6.12.49-summit` |
+| Open source Yocto build assembled with `repo` | The same `repo` workflow, with one manifest branch on top of Ezurio's release tag |
+| Ezurio's bootloader, partitioning and image classes | Used as released; the image inherits Ezurio's image, SD and SWU classes and builds through Ezurio's `setup-environment-nxp` |
+| Read-only dm-verity root filesystem, A/B slots and a `/rw` overlay | The same layout |
+| SWUpdate with `fw_update` and signed packages | The same engine and tool, which install the update on the device |
+| Ezurio connectivity stack | Included: the Summit supplicant, NetworkManager, hostapd and Bluetooth packages |
+| SBOM generation | Each image build writes an SPDX file |
+
+### What is different
+
+| Area | EZ BSP | EdgeFirst Yocto for Ezurio |
+|---|---|---|
+| Update trust | Ezurio's signing, with customer keys in the secure variants | Trusts only the EdgeFirst root. An Ezurio image does not accept an EdgeFirst `.swu`, and an EdgeFirst image does not accept an Ezurio one. |
+| Secure boot | The `-secure` distributions add signed boot, OP-TEE and a read-only root without the overlay | Not used. The image is built on the `summitsom-wayland` distribution, so secure boot is not enabled. |
+| Build systems | Yocto or Buildroot | Yocto only |
+| Contents | A general-purpose Linux | The EdgeFirst edge AI runtime, with no GStreamer, Python or ONNX |
+| Kernel | Ezurio's kernel as released | Ezurio's kernel plus device tree changes that enable the GPU and NPU, the Neutron mailbox handshake backport that the 3.2.x firmware needs, and a VGEM render node on the i.MX 95 for headless GPU use |
+| Versioning | Ezurio's own releases, with security releases outside the normal cycle | `YYYY.MM.PATCH`, with the Ezurio BSP version shown beside it in `/etc/os-release` |
+| Support | Provided by Ezurio | None with the open source release. Commercial support is available from Au-Zone. |
+| Delivery | From Ezurio | Published at `https://repo.edgefirst.ai/ezurio/` |
+
+An EdgeFirst release is a separate release line. Ezurio's packages and signing keys do not update it, and it does not take part in Ezurio's secure boot chain.
+
 ## Releases
 
 Releases are quarterly and numbered `YYYY.MM.PATCH`, for example `2026.10.0`. A published release is never changed; a fix is the next `PATCH`. Each is published at `https://repo.edgefirst.ai/ezurio/<machine>/<version>/`:
