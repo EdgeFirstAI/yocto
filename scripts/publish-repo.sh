@@ -343,8 +343,19 @@ EOF
     update_summary
 
     run aws s3 sync "$OSTREE_STAGING_REPO" "s3://${S3_BUCKET}/${OSTREE_S3_PREFIX}" "${AWS_REGION_ARGS[@]}"
+    publish_public_key
 
     OSTREE_PUBLISHED=1
+}
+
+# --- Public signing key -----------------------------------------------------
+# The verification key is public by design; publish it next to the repository
+# so users can inspect and import it.
+publish_public_key() {
+    [[ -n "$OSTREE_ED25519_PUBLIC_FILE" ]] || return 0
+    run aws s3 cp "$OSTREE_ED25519_PUBLIC_FILE" \
+        "s3://${S3_BUCKET}/${OSTREE_S3_PREFIX}/$(basename "$OSTREE_ED25519_PUBLIC_FILE")" \
+        --content-type text/plain "${AWS_REGION_ARGS[@]}"
 }
 
 # --- Sign existing commits --------------------------------------------------
@@ -367,6 +378,7 @@ sign_existing() {
     done < <(ostree --repo="$OSTREE_STAGING_REPO" refs)
     update_summary
     run aws s3 sync "$OSTREE_STAGING_REPO" "s3://${S3_BUCKET}/${OSTREE_S3_PREFIX}" "${AWS_REGION_ARGS[@]}"
+    publish_public_key
     OSTREE_PUBLISHED=1
 }
 
