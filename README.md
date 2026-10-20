@@ -25,6 +25,26 @@ MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
 bitbake imx-image-full
 ```
 
+## Choosing a BSP
+
+`EdgeFirstAI/yocto` is a family of detached branches, one per platform and BSP, with no shared history; the `main` branch indexes them. Besides the NXP i.MX branches below there are branches for Toradex Torizon, PHYTEC (i.MX 95 and i.MX 8M Plus), and Ezurio Nitrogen SMARC. The vendor branches keep the vendor's projects as published and add [meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst) plus a `meta-edgefirst-<vendor>` layer; only the NXP branches use meta-kinara and the Ara-2 NPU. A change to meta-edgefirst reaches a branch only when that branch's manifest is re-pinned, so the branches are re-pinned together when it changes.
+
+The NXP i.MX branches each track one NXP BSP, and both pin the latest meta-edgefirst and meta-kinara:
+
+| Branch | Manifest | NXP BSP | Use for |
+|---|---|---|---|
+| `edgefirst-imx-6.18.20-2.0.0` | `edgefirst-imx-6.18.20-2.0.0.xml` | 6.18.20-2.0.0 (wrynose) | i.MX 95, and i.MX 8M Plus without Ara-2 |
+| `edgefirst-imx-6.12.49-2.2.0` | `edgefirst-imx-6.12.49-2.2.0.xml` | 6.12.49-2.2.0 (walnascar) | i.MX 8M Plus with the Ara-2 NPU |
+
+i.MX 8M Plus boards with an Ara-2 hang under Ara-2 inference load on the 6.18.20 BSP, while the same Ara-2 runtime, driver, and bindings run stably on 6.12.49. Use the `edgefirst-imx-6.12.49-2.2.0` branch for them until that is resolved:
+
+```bash
+repo init -u https://github.com/EdgeFirstAI/yocto.git \
+    -b edgefirst-imx-6.12.49-2.2.0 -m edgefirst-imx-6.12.49-2.2.0.xml
+```
+
+On that branch the Ara-2 runtime is the Kinara SDK packaging from meta-kinara (`ara2.service`, enable it with `systemctl enable --now ara2`), and the NNStreamer Ara-2 sub-plugin (`nnstreamer-ara2`) is built. Release tags such as `v1.2.3` are fixed snapshots and are not updated.
+
 The setup script:
 
 - Requires `MACHINE` on first run — bakes it into `local.conf`
@@ -109,7 +129,7 @@ cargo build --target aarch64-unknown-linux-gnu
 
 ## Adding Vendor Manifests
 
-Each vendor platform and BSP gets its own branch:
+Each vendor platform and BSP gets its own branch, plus a `meta-edgefirst-<vendor>` layer for everything specific to that vendor (image, update mechanism, vendor kernel patches). Portable content stays in meta-edgefirst:
 
 1. Create a branch named `edgefirst-<vendor>-<bsp-version>` with a standalone manifest of the same name (e.g., `edgefirst-vendor-foobar.xml`) holding the vendor's projects, our layers, and a self-reference to that branch
 2. Users init with: `repo init -b <branch> -m <manifest>.xml`

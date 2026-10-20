@@ -160,9 +160,146 @@ EdgeFirst perception platform: HAL, camera/sensor services, GStreamer ML pipelin
 
 Kinara Ara-2 NPU support: kernel module, firmware, userspace libraries. On this BSP the runtime is meta-kinara's Kinara SDK packaging (`imx-nxp-ara2` 1.2.1, `ara2.service` on `/var/run/ara2.sock`), since the walnascar meta-imx-ml has no NXP Ara-2 recipe; meta-kinara's `KINARA_ARA2_RUNTIME` reads `kinara`, so meta-edgefirst builds `nnstreamer-ara2`. It requires `KINARA_MIRROR` (NDA required). `ara2.service` is installed disabled: `systemctl enable --now ara2`. A card flashed by NXP's runtime (firmware 65794 or newer) fails with `DV_ENDPOINT_FIRMWARE_BOOT_FAILURE` until restored with `program_flash --version_check 0`. See [Choosing an Ara-2 runtime](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#choosing-an-ara-2-runtime) and [Ara-2 card boot firmware](https://github.com/EdgeFirstAI/meta-kinara?tab=readme-ov-file#ara-2-card-boot-firmware).
 
-## Yocto Release Compatibility (Scarthgap + Walnascar)
+## Purpose, Cadence, and Releases
 
-meta-edgefirst **must** build on both **Scarthgap** (Yocto 5.0 LTS) and **Walnascar** (Yocto 5.2). Key differences between the two releases affect how recipes are written:
+The Yocto integrations in this family of branches (Torizon included) exist for two reasons:
+
+1. **Every vendor gets the latest NPU, GPU, camera, and vision-pipeline enablement** that the EdgeFirst stack needs on their platforms, even when the vendor's own BSP lags NXP.
+2. **Every vendor platform gets the latest EdgeFirst stack** integrated and tested on it.
+
+### Cadence
+
+NXP publishes a Yocto BSP quarterly. We track that release on the NXP FRDM/EVK branches first, work out which of our owned changes are still needed (see Tracking NXP BSP Releases and Owned Patches), and then **backport whatever each vendor BSP requires** (NPU/Neutron/VX, GPU/`galcore`, camera/ISP, vision pipeline) as part of producing that vendor's EdgeFirst release. A vendor release is therefore: the vendor's own BSP release, plus the current `meta-edgefirst`, plus the backports that BSP's kernel and ML layers need.
+
+### Products, naming, and versions
+
+Every release of every product is versioned `YYYY.MM.PATCH` (for example `2026.10.0`). A published release is never changed; a fix is the next `PATCH`. Product names:
+
+| Product name | Platform | Branch |
+|---|---|---|
+| EdgeFirst Yocto for NXP | NXP i.MX EVK/FRDM | `edgefirst-imx-*` |
+| EdgeFirst Yocto for PHYTEC | PHYTEC phyBOARD/phyFLEX/phyCORE | `edgefirst-phytec-*` |
+| EdgeFirst Yocto for Ezurio | Ezurio Nitrogen SMARC | `edgefirst-ezurio-*` |
+| Torizon with EdgeFirst | Generic Toradex Verdin and Aquila boards | `torizon` |
+| Torizon for Maivin | Our internal Maivin platform | Torizon-family branch |
+| Torizon for ADIS | Customer-specific variant of Torizon for Maivin | Torizon-family branch |
+
+"EdgeFirst Yocto for VENDOR" is the general pattern; Toradex is the deliberate exception, because Torizon is the product users see. Use these names in READMEs, CHANGELOGs, release notes, and artifact names, not ad hoc variants. Torizon for ADIS derives from Torizon for Maivin, so changes to Maivin must be considered for ADIS at rollout time. Where a branch for Maivin or ADIS is not in the table above, ask the user where it lives before assuming.
+
+## Branches and BSP Selection
+
+`EdgeFirstAI/yocto` is a family of **detached branches**. Every supported platform/BSP combination has its own branch holding its own manifest, setup tooling, README, copilot instructions, and CHANGELOG; `main` is an orphan branch holding only a README index. Branches never merge into each other and share no history, so a change to one is never implicitly a change to another. Release tags are frozen snapshots and are never updated.
+
+| Branch | Platform | BSP | Use for |
+|---|---|---|---|
+| `edgefirst-imx-6.18.20-2.0.0` | NXP i.MX EVK/FRDM | NXP 6.18.20-2.0.0 (wrynose) | i.MX 95, and i.MX 8M Plus without Ara-2 |
+| `edgefirst-imx-6.12.49-2.2.0` | NXP i.MX EVK/FRDM (**this branch**) | NXP 6.12.49-2.2.0 (walnascar) | i.MX 8M Plus with the Ara-2 NPU |
+| `torizon` | Toradex Verdin | Torizon OS (walnascar) | Verdin i.MX 8M Plus, Verdin i.MX 95 |
+| `edgefirst-phytec-imx95-PD26.1.y` | PHYTEC phyBOARD-Libra | PHYTEC PD26.1.y on NXP 6.18.20 (wrynose) | phyFLEX-i.MX 95 |
+| `edgefirst-phytec-imx8mp-PD26.1.y` | PHYTEC phyBOARD-Pollux/Libra | PHYTEC PD26.1.y on NXP 6.12.49 (walnascar) | phyCORE/phyFLEX-i.MX 8M Plus |
+| `edgefirst-ezurio-6.16.0.27` | Ezurio Nitrogen SMARC | Ezurio SUMMIT-REL-6.16.0.27 on NXP 6.12.49 (walnascar) | i.MX 8M Plus, i.MX 95 |
+
+`main`'s README is the authoritative index; keep this table and that one in step.
+
+i.MX 8M Plus boards hang under Ara-2 inference load on the 6.18.20 BSP; the same Kinara SDK runtime, uiodma driver, and edgefirst-ara2 bindings run stably on 6.12.49 (validated 2026-09-28 on imx8mp-frdm and imx8mp-frdm-2, about 124,000 det/seg inferences each).
+
+### How the branches relate
+
+- **NXP branches** (this one and the 6.12.49 one) are the reference integration. Each tracks one NXP BSP release verbatim, adds `meta-edgefirst` and `meta-kinara`, and is built and QA'd on our FRDM/EVK boards. Whatever EdgeFirst needs from the NXP BSP is proven here first.
+- **Vendor branches** (Torizon, PHYTEC, Ezurio) keep the vendor's own projects as the vendor published them, add `meta-edgefirst`, and add one **vendor layer** named `meta-edgefirst-<vendor>`. They do not use `meta-kinara`; Ara-2 is only supported on the NXP branches. The vendor's kernel, bootloader, update mechanism (OSTree, RAUC, SWUpdate), image recipe, and release cadence are the vendor's, so those differences live in the vendor layer and the branch's own docs, not in `meta-edgefirst`.
+- A vendor BSP is often a different NXP base than the NXP branch (6.12.49 walnascar vs 6.18.20 wrynose), so a vendor branch can lag the NXP reference by a whole Yocto release. That is expected; the shared layer supports all of them at once (see Yocto Release Compatibility).
+- Every manifest pins `meta-edgefirst` and the vendor layer by commit SHA with `upstream="main"`, and has a self-reference project (`name="yocto"`) whose revision is its own branch. Vendor layers also live only on `main`.
+
+### Where things belong
+
+| Content | Home |
+|---|---|
+| Anything portable across all BSPs: recipes for EdgeFirst packages, HAL, services, NPU delegates/forks, packagegroups, NNStreamer, kernel patches that are needed by any NXP-kernel BSP | `meta-edgefirst` (`main`), gated with `LAYERSERIES_CORENAMES` or machine overrides, never a per-release branch |
+| Anything that only makes sense on one vendor's BSP: image recipes, update/signing integration, vendor kernel bbappends and patches, vendor device-tree overlays, vendor workarounds | `meta-edgefirst-<vendor>` (`main`) |
+| Which commits of which layers a given BSP builds, the vendor's own project pins, setup tooling, vendor docs | the vendor's branch of `EdgeFirstAI/yocto` |
+| Ara-2 runtime and kernel driver packaging | `meta-kinara` (NXP branches only) |
+
+If a vendor layer needs to copy something from `meta-edgefirst`, first ask whether it should be a gated recipe in `meta-edgefirst` instead. If portable conditionals in `meta-edgefirst` ever stop being workable, the fallback is to split the NXP-kernel pieces into a separate layer that gets version branches; `meta-edgefirst` itself stays portable on `main`.
+
+## Rolling Out Updates Across All Branches
+
+Because the branches are detached, **an update to `meta-edgefirst` or a vendor layer reaches a BSP only when that BSP's manifest is re-pinned.** Rolling out means landing the layer change on `main`, then updating, building, and testing every branch.
+
+The user keeps a local checkout of each branch somewhere on the host and will tell you where when asking for a rollout; do not assume or hardcode locations. Each checkout is a `repo` workspace whose manifest repo (under `.repo/manifests`, also checked out as the self-referencing project) is on the branch in question. Check the branch actually checked out before editing anything.
+
+### Rollout procedure
+
+1. **Land the layer change first.** Commit and push to `main` of `meta-edgefirst` (and the affected `meta-edgefirst-<vendor>` layers, `meta-kinara`) before touching any manifest. A manifest must only ever pin a SHA that exists on the remote.
+2. **Get the list of checkouts from the user.** Confirm for each: which branch it is on, that its working tree is clean, and that nothing in it is unpushed. Do not proceed on a dirty or divergent checkout without asking.
+3. **Fetch the manifest repo and the layers**, and fast-forward the branch. Local `repo` workspaces go stale easily; a workspace that has not been synced will show old pins and old layer content. Verify against the remote rather than trusting the workspace.
+4. **Re-pin.** In each branch's manifest, set `meta-edgefirst` (and each vendor layer that changed) to the new full SHA, leaving `upstream="main"`. Change nothing else in the manifest unless the rollout calls for it. NXP branches also re-pin `meta-kinara`. Never pin a layer to a per-release branch.
+5. **Check the vendor layers still apply.** Read the diff of `meta-edgefirst` since the old pin and ask, for each branch: does any changed recipe have a `bbappend` in the vendor layer (tim-vx, VX/Neutron delegate, NNStreamer, `linux-*` kernel bbappends, `neutron`, `imx-gpu-viv`, packagegroups, images)? A vendor layer that overrides `SRC_URI`, `S`, or a version that `meta-edgefirst` just changed will break silently or fail at parse. Also check that new `meta-edgefirst` features whose prerequisites are kernel- or BSP-specific (for example a Neutron SDK needing a particular kernel mailbox handshake) are satisfied on each vendor kernel before re-pinning.
+6. **Parse test every machine** of every branch (`bitbake -p`, or `bitbake -e <image>` for a specific variable) in a synced workspace. This catches dangling bbappends, `LAYERSERIES_COMPAT` gaps, and QA fatals (`S`/`UNPACKDIR`) cheaply and is the minimum bar.
+7. **Build the image** for at least one machine per SoC family per branch (it need not be every machine: the NPU backend differs by SoC, not by board). Prefer the vendor's own release image recipe, since that is what ships.
+8. **Test on hardware** where the change touches runtime behaviour: NPU delegate or firmware changes, kernel patches, and camera/GPU changes require booting and running the `yolov8n` pipeline on that vendor's board. Pure packaging or service-version bumps may be satisfied with a build plus a boot smoke test. If a board is not available, say so in the result instead of reporting the branch as tested.
+9. **Commit the re-pin per branch** with a signed commit, and update that branch's `CHANGELOG.md`, `README.md`, and `.github/copilot-instructions.md` if the change affects usage or structure. Ask the user to confirm CHANGELOG entries first. Pushes to EdgeFirstAI repos use the SSH remote URL; HTTPS pushes fail.
+10. **Report per branch**: old pin to new pin, what was parsed/built/booted, what was not tested and why, and any vendor-layer follow-up needed.
+
+Do not partially roll out silently. If one branch cannot take the update (for example a vendor kernel needs a backport first), land the fix in that vendor layer, re-pin it, and say which branches are on the new pin and which are not. Branches intentionally held back must say why in their CHANGELOG. A rollout that is part of a product release also bumps that product's `YYYY.MM.PATCH` version; the user decides when a release is ready to publish.
+
+Re-pinning the NXP branches also includes `meta-kinara`, and the 6.12.49 and 6.18.20 branches must always be re-pinned together.
+
+## Tracking NXP BSP Releases and Owned Patches
+
+The NXP FRDM/EVK branches are where new NXP BSP releases are adopted first. Upgrading one is also the moment to decide, patch by patch, what EdgeFirst still owns.
+
+### What we own
+
+EdgeFirst maintains changes in three places. At any moment each change should have exactly one owner and a recorded reason to exist:
+
+1. **Fork repositories** carried by `meta-edgefirst` recipes, always as rolling branches of an `EdgeFirstAI/*` repository that contain the corresponding NXP branch plus our commits: `tim-vx-imx` (`edgefirst-dmabuf`), `tflite-vx-delegate-imx` (`edgefirst`), `tflite-neutron-delegate` (`edgefirst`), `nnstreamer` (`edgefirst`), `nxp-nnstreamer-examples` (`edgefirst-yolov8`), and the republished eIQ Neutron SDK target binaries (`neutron`, branch `eiq-neutron-sdk`, tagged per SDK version). Never push to `main` of the forked repositories.
+2. **Kernel patches** against NXP's `linux-imx` (and vendor kernels derived from it): Neutron buffer export as dma-buf and its namespace import, the Neutron mailbox handshake rework required by Neutron SDK 3.2.x, Neutron probe/IRQ fixes, board device-tree additions (for example camera/NPU nodes and NPU DMA pool sizing).
+3. **Recipe-level patches and workarounds** in `meta-edgefirst`, `meta-kinara`, and vendor layers (for example the walnascar `pseudo` openat2 fix, and `imx-gpu-viv`/`kernel-module-imx-gpu-viv` carry-overs in vendor layers whose BSP predates the one `meta-edgefirst` assumes).
+
+### When NXP releases a new BSP
+
+Do this on the NXP branch, in a build directory for the new BSP, before any vendor branch changes:
+
+1. **Fetch** every NXP project the manifest pins and compare the new tag to the old one, in particular the ML layer (`meta-imx-ml`), the kernel recipe, `imx-gpu-viv`/`kernel-module-imx-gpu-viv`, `neutron`, `tim-vx`, the VX/Neutron delegates, NNStreamer, and the Ara-2 runtime. NXP has moved release tags before, so also compare commit SHAs, not just tag names.
+2. **For every item in the ownership list above, classify it**:
+   - *Upstreamed*: NXP's new tree contains the change (search the kernel and delegate logs for the subject, not just the file). Drop our copy for that series, record the NXP commit in the bbappend comment, and gate any remaining older-series carry with `LAYERSERIES_CORENAMES`. Never port an upstreamed patch forward.
+   - *Superseded*: NXP now offers a different mechanism that overlaps ours (for example NXP shipping its own NNStreamer Ara-2 sub-plugin and tensor_filter V2 API). Decide deliberately whether to converge on NXP's, keep ours, or adapt; record the decision.
+   - *Still ours*: bring the fork up to the new NXP branch by merging the new `lf-*` branch into the fork's rolling branch (resolve conflicts there, not in the recipe), then update the SRCREV in `meta-edgefirst`. Check what NXP added that the fork lacks, not just whether the fork still builds.
+   - *Obsolete*: the problem it fixed no longer exists. Remove it and say why in the commit.
+3. **Check NXP-side ABI and version coupling**: the Neutron kernel driver, firmware, library, and compiler version must agree (the SDK we republish may be newer than NXP's own); the VX delegate, TIM-VX, and `galcore` must agree with the userspace GPU stack; litert/tensorflow-lite versions must match the delegates. Do not accept a bump that breaks one of these couplings on a BSP we still support.
+4. **Update the NXP branch manifest** to the new BSP tag, re-pin the layers, build all four machines, and QA on the boards (see Manual QA Validation).
+5. **Record the result** in the owned-patch table below and in the CHANGELOG.
+
+### Backporting to vendor BSPs
+
+Vendor BSPs run older or different kernels and ML layers than the NXP reference, so some patches the NXP branch no longer needs are still required there, and some NXP-branch fixes need adapting. For every patch still owned, decide where it applies:
+
+- **Same patch file, kernel series matches the NXP series it was written for**: keep a single copy in `meta-edgefirst` and have the vendor layer reference it, as is done for the Neutron dma-buf export on kernels still on the 6.12 series. Do not duplicate it.
+- **Vendor kernel diverges from `linux-imx`** (different base version, vendor fork, different patch queue and numbering): the vendor layer carries its own copy, rebased onto that kernel. The vendor bbappend must say what the patch is, which NXP commit it mirrors, which firmware or userspace version it is coupled to, and the condition for dropping it (for example "vendor kernel reaches 6.18.37"). Today the Neutron mailbox handshake rework is carried this way by every vendor layer that supports i.MX 95.
+- **Scope the patch** to the SoC or machine that has the hardware (for example i.MX 95 only for Neutron) so the same recipe name on another SoC is unaffected.
+- **Coupled changes ship together.** If a userspace bump in `meta-edgefirst` requires a kernel change (the Neutron SDK and its kernel handshake are the current example), every vendor branch that will take the bump needs the kernel change in its vendor layer *before* it is re-pinned. Check this at step 5 of the rollout procedure.
+- **Retire carried patches** when the vendor's kernel moves past them. Each vendor branch's CHANGELOG records what it carries and why, so the list can be audited at every rollout.
+
+### Owned items and where they apply (keep current)
+
+As of 2026-10-19; update this table whenever a rollout or an NXP BSP upgrade changes it.
+
+| Item | Owner | NXP wrynose 6.18 | NXP/vendor 6.12 walnascar | Notes |
+|---|---|---|---|---|
+| Neutron dma-buf export (kernel) | `meta-edgefirst` patch | in NXP tree since 6.18.20, do not port | `meta-edgefirst` patch reused by vendors | i.MX 95 only |
+| Neutron namespace import (kernel) | `meta-edgefirst` patch | in NXP tree | `meta-edgefirst` patch | 6.12 syntax unquoted |
+| Neutron mailbox handshake (kernel, for SDK 3.2.x) | each vendor layer | in NXP 6.18.37; absent in 6.18.20 | vendor layer copy | version lock with SDK 3.2.x firmware |
+| Neutron SDK 3.2.3 target binaries | `EdgeFirstAI/neutron` fork via `meta-edgefirst` | all | all | NXP's own tree carries an older SDK |
+| tim-vx dma-buf tensor API | `tim-vx-imx` fork | rebase on NXP branch each BSP | same | |
+| VX delegate dma-buf + CameraAdaptor | `tflite-vx-delegate-imx` fork | rebase | same | i.MX 8M Plus |
+| Neutron delegate dma-buf (per-delegate registry) | `tflite-neutron-delegate` fork | rebase; check NXP additions such as cross-process locking | same | i.MX 95 |
+| NNStreamer dma-buf, tensor_filter V2, Ara-2 | `nnstreamer` fork | converge or keep; NXP now ships its own V2 series | NXP branch only for Ara-2 | |
+| Pseudo openat2 fix | `meta-edgefirst`, walnascar-gated | n/a | yes | vendor layers must not duplicate it |
+| imx95-19x19-evk camera DTB | `meta-edgefirst` kernel bbappend | NXP EVK only | n/a | |
+
+## Yocto Release Compatibility (Scarthgap + Walnascar + Whinlatter + Wrynose)
+
+meta-edgefirst **must** build on **Scarthgap** (Yocto 5.0 LTS), **Walnascar** (Yocto 5.2), **Whinlatter** (Yocto 5.3), and **Wrynose** (Yocto 5.4). Key differences between the releases affect how recipes are written:
 
 ### UNPACKDIR / WORKDIR
 
@@ -688,10 +825,11 @@ If only one board is available, the count halves. All tests for one board can co
 
 To support a new i.MX-based vendor platform:
 
-1. Create a branch named `edgefirst-<vendor>-<bsp-version>` with a standalone manifest of the same name (e.g., `edgefirst-vendor-foobar.xml`) holding the vendor's projects, our layers, and a self-reference project pointing at that branch
-2. Add a matching `templates/vendor/bblayers.conf` if the layer set differs
+1. Create a vendor layer repository `meta-edgefirst-<vendor>` (its content only on `main`) holding the vendor-specific image recipe, update/signing integration, kernel bbappends/patches, and workarounds. Keep anything portable in `meta-edgefirst`.
+2. Create a branch named `edgefirst-<vendor>-<bsp-version>` in `EdgeFirstAI/yocto` with a standalone manifest of the same name holding the vendor's projects as published, `meta-edgefirst` and the vendor layer pinned by SHA with `upstream="main"`, and a self-reference project pointing at that branch. Add the setup tooling, README, copilot instructions, and CHANGELOG the branch needs.
 3. Users init with: `repo init -b <branch> -m <manifest>.xml`
-4. Add the branch to the index in `main`'s README
+4. Add the branch to the index in `main`'s README and to the table in this file.
+5. Add the vendor to the rollout checklist: record how its image is built, where its test boards are, and which owned patches its kernel needs.
 
 ## Skills Reference
 
