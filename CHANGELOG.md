@@ -7,6 +7,15 @@ For per-package details, see the layer changelogs linked below.
 
 ## [Unreleased]
 
+### Updating boards
+
+- Boards running these images update themselves with `apt` from a signed package feed at repo.edgefirst.ai, kernel and device trees included: `apt update`, `apt full-upgrade`, reboot, `apt autoremove`.
+- Releases are named EdgeFirst Yocto YYYY.MM.PATCH. `/etc/os-release` shows the release next to the unchanged NXP BSP version, for example "EdgeFirst Yocto 2026.10.1 for NXP i.MX BSP 6.12.49-2.2.0".
+- `edgefirst-release-upgrade` moves a board to the next quarterly release.
+- An existing NXP image with deb packages can be moved onto the feed without reflashing with `edgefirst-adopt`; images with other package formats must be reflashed.
+- The update mechanism is opt-in per build with `EDGEFIRST_APT_FEED`; the NXP builds have it on.
+- The 6.12.49 images build with the current EdgeFirst fork branches and use deb packaging.
+
 ### Images and NPU runtimes
 
 - EdgeFirst services and libraries move to their latest releases, including EdgeFirst HAL 0.28.3, videostream 2.6.1, edgefirst-client 2.17.0 and edgefirst-profiler 1.19.0. The [meta-edgefirst CHANGELOG](https://github.com/EdgeFirstAI/meta-edgefirst/blob/main/CHANGELOG.md) has the full version table.

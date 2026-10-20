@@ -67,18 +67,13 @@ fi
 
 BACKUP="/root/edgefirst-adopt-backup-$(date +%Y%m%d%H%M%S)"
 mkdir -p "$BACKUP/boot"
-if grep -q ' /boot ' /proc/mounts; then
-    cp -a /boot/. "$BACKUP/boot/"
-else
-    mp="$(awk -v d="$BOOT_DEV" '$1 == d { print $2; exit }' /proc/mounts)"
-    if [ -z "$mp" ]; then
-        mkdir -p "$BACKUP/mnt" && mount -o ro "$BOOT_DEV" "$BACKUP/mnt" && mp="$BACKUP/mnt"
-    fi
-    cp -a "$mp"/. "$BACKUP/boot/"
-    ! grep -q " $BACKUP/mnt " /proc/mounts || umount "$BACKUP/mnt"
+mp="$(findmnt -rn -o TARGET -S "$BOOT_DEV" | head -n 1)"
+if [ -z "$mp" ]; then
+    mkdir -p "$BACKUP/mnt" && mount -o ro "$BOOT_DEV" "$BACKUP/mnt" && mp="$BACKUP/mnt"
 fi
-cp -a /etc/fstab "$BACKUP/fstab"
-echo "Boot partition and fstab saved in $BACKUP"
+cp -a "$mp"/. "$BACKUP/boot/"
+! grep -q " $BACKUP/mnt " /proc/mounts || umount "$BACKUP/mnt"
+echo "Boot partition saved in $BACKUP"
 
 LIST=/etc/apt/sources.list.d/edgefirst.list
 [ ! -e "$LIST" ] || mv "$LIST" "$BACKUP/edgefirst.list"
@@ -115,17 +110,11 @@ apt-get install -y --allow-downgrades $OVERWRITE -o Dpkg::Options::=--force-conf
 # shellcheck disable=SC2086
 apt-get full-upgrade -y --allow-downgrades $OVERWRITE -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold
 
-# The kernel packages the image came with are now older than the feed's. Their
-# stock removal script deletes /boot/Image whichever kernel it belongs to, so it
-# is neutralised, and they are marked as automatically installed so that
-# apt autoremove retires them like any other old kernel.
-for script in /var/lib/dpkg/info/kernel-image-image-*.postrm; do
-    if [ -e "$script" ] && grep -q 'rm -f boot/Image' "$script"; then
-        printf '#!/bin/sh\nexit 0\n' > "$script"
-    fi
-done
+# The kernel packages the image came with are now older than the feed's. They are
+# marked as automatically installed so that apt autoremove retires them like any
+# other old kernel.
 apt-mark auto $(dpkg-query -W -f '${Package}\n' 'kernel-*') >/dev/null
 
 . /etc/os-release
 echo "Now on ${PRETTY_NAME:-EdgeFirst Yocto}. Reboot to run the new kernel, then run apt autoremove."
-echo "If the board does not boot, the previous kernel is /boot/Image.prev (set image=Image.prev in U-Boot); the original boot partition is in $BACKUP/boot."
+echo "If the board does not boot, the previous kernel is Image.prev on the boot partition (set image=Image.prev in U-Boot); the original boot partition is in $BACKUP/boot."
