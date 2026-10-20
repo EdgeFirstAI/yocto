@@ -4,6 +4,8 @@ Torizon OS for Toradex Verdin i.MX 8M Plus and i.MX 95 with the EdgeFirst Percep
 This is the `torizon` branch of [EdgeFirstAI/yocto](https://github.com/EdgeFirstAI/yocto).
 Each vendor branch in that repository is independent and carries only the repo manifests for its own builds, so nothing here is shared with the other branches.
 
+This branch is **Torizon with EdgeFirst**, one of the EdgeFirst Yocto products. Releases are versioned `YYYY.MM.PATCH` (for example `2026.10.0`), and a published release is never changed; a fix is the next `PATCH`. All the branches share one set of NPU, GPU, camera and vision-pipeline enablement through [meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst), which is kept current by re-pinning every branch together, and the NXP boards are the reference platform where each new NXP BSP is adopted first.
+
 The manifest tracks Toradex's Torizon OS 7 on the walnascar (Yocto 5.2) release train and adds two layers:
 
 - [meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst), the generic EdgeFirst layer shared by every platform.
