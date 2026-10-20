@@ -3,6 +3,12 @@
 All notable changes to the `torizon` branch of EdgeFirstAI/yocto are documented here.
 Package version tables live in the [meta-edgefirst changelog](https://github.com/EdgeFirstAI/meta-edgefirst/blob/main/CHANGELOG.md).
 
+## [Unreleased]
+
+### NPU
+
+- Compiling a model from several threads at the same time no longer fails on the Vivante NPU.
+
 ## [2026.10.0-rc1] - 2026-10-19
 
 ### Manifest
