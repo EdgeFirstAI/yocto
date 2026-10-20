@@ -152,6 +152,17 @@ DLEOF
         -e "s,PACKAGE_CLASSES ?=.*,PACKAGE_CLASSES ?= 'package_deb',g" \
         -i conf/local.conf
 
+    # The sample local.conf may carry DISTRO and PACKAGE_CLASSES only as
+    # comments, so the seds above can silently match nothing and the build
+    # would run with rpm packaging, which has no apt on the target. Insert the
+    # assignments when missing.
+    if ! grep -q "^PACKAGE_CLASSES ?=" conf/local.conf; then
+        sed -e "1iPACKAGE_CLASSES ?= 'package_deb'" -i conf/local.conf
+    fi
+    if ! grep -q "^DISTRO ?=" conf/local.conf; then
+        sed -e "1iDISTRO ?= '$FSLDISTRO'" -i conf/local.conf
+    fi
+
     # MACHINE: always set on first run (enforced above)
     sed -e "s,MACHINE ??=.*,MACHINE ??= '$MACHINE',g" -i conf/local.conf
 

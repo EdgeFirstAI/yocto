@@ -43,7 +43,7 @@ die() { echo "edgefirst-adopt: $*" >&2; exit 1; }
 command -v dpkg >/dev/null && command -v apt-get >/dev/null \
     || die "this image has no dpkg and apt (it uses another package format); reflash it with an EdgeFirst image"
 [ "$(dpkg --print-architecture)" = arm64 ] || die "not an arm64 image"
-if [ -r /etc/os-release ] && grep -q '^EDGEFIRST_RELEASE=' /etc/os-release; then
+if [ "$(dpkg-query -W -f '${db:Status-Status}' edgefirst-release 2>/dev/null)" = installed ]; then
     die "this board already runs EdgeFirst Yocto; use apt update and apt full-upgrade"
 fi
 
@@ -87,8 +87,10 @@ for arch in all $ARCHS; do
 done | awk '!seen[$0]++' > "$LIST"
 
 export DEBIAN_FRONTEND=noninteractive
+OVERWRITE="-o Dpkg::Options::=--force-overwrite"
 apt-get update
-apt-get install -y --allow-downgrades -o Dpkg::Options::=--force-confnew -o Dpkg::Options::=--force-confmiss \
+# shellcheck disable=SC2086
+apt-get install -y --allow-downgrades $OVERWRITE -o Dpkg::Options::=--force-confnew -o Dpkg::Options::=--force-confmiss \
     gnupg edgefirst-apt-config
 # The package replaced the list with the signed one; from here the feed is checked.
 if [ "$FEED_URI" != "$DEFAULT_URI" ]; then
@@ -97,8 +99,10 @@ if [ "$FEED_URI" != "$DEFAULT_URI" ]; then
     sed -i "s#^Pin: origin .*#Pin: origin $host#" /etc/apt/preferences.d/edgefirst
 fi
 apt-get update
-apt-get install -y --allow-downgrades -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold edgefirst-release
-apt-get full-upgrade -y --allow-downgrades -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold
+# shellcheck disable=SC2086
+apt-get install -y --allow-downgrades $OVERWRITE -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold edgefirst-release
+# shellcheck disable=SC2086
+apt-get full-upgrade -y --allow-downgrades $OVERWRITE -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold
 
 # The kernel packages the image came with are now older than the feed's. Their
 # stock removal script deletes /boot/Image whichever kernel it belongs to, so it
