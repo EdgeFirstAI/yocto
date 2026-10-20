@@ -7,6 +7,11 @@ For per-package details, see the layer changelogs linked below.
 
 ## [Unreleased]
 
+### Images and NPU runtimes
+
+- EdgeFirst services and libraries move to their latest releases, including EdgeFirst HAL 0.28.3, videostream 2.6.1, edgefirst-client 2.17.0 and edgefirst-profiler 1.19.0. The [meta-edgefirst CHANGELOG](https://github.com/EdgeFirstAI/meta-edgefirst/blob/main/CHANGELOG.md) has the full version table.
+- Compiling a model from several threads at the same time no longer fails on the Vivante NPU (i.MX 8M Plus).
+
 ### Branch for i.MX 8M Plus with Ara-2
 
 - New `edgefirst-imx-6.12.49-2.2.0` branch, started from `main` after v1.2.3. It keeps the NXP imx-6.12.49-2.2.0 (walnascar) BSP for i.MX 8M Plus boards with the Ara-2 NPU, which hang under Ara-2 inference load on the 6.18.20 BSP and run stably here, and it pins the latest `meta-edgefirst` and `meta-kinara`. The manifest's self-reference now points at this branch instead of `main`, which becomes an index of all supported branches. Release tags are not updated.
