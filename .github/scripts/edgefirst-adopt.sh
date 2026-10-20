@@ -43,7 +43,7 @@ die() { echo "edgefirst-adopt: $*" >&2; exit 1; }
 command -v dpkg >/dev/null && command -v apt-get >/dev/null \
     || die "this image has no dpkg and apt (it uses another package format); reflash it with an EdgeFirst image"
 [ "$(dpkg --print-architecture)" = arm64 ] || die "not an arm64 image"
-if [ -r /etc/os-release ] && grep -q '^EDGEFIRST_RELEASE=' /etc/os-release; then
+if [ "$(dpkg-query -W -f '${db:Status-Status}' edgefirst-release 2>/dev/null)" = installed ]; then
     die "this board already runs EdgeFirst Yocto; use apt update and apt full-upgrade"
 fi
 
@@ -82,12 +82,23 @@ echo "Boot partition and fstab saved in $BACKUP"
 
 LIST=/etc/apt/sources.list.d/edgefirst.list
 [ ! -e "$LIST" ] || mv "$LIST" "$BACKUP/edgefirst.list"
+# The key is not on the board yet on a first run, and without gpgv apt cannot
+# check the signature at all; a second run finds both, and apt then needs the key.
+KEYRING=/usr/share/keyrings/edgefirst-nxp-apt.gpg
+if [ -e "$KEYRING" ] && command -v gpgv >/dev/null; then
+    TRUST="signed-by=$KEYRING"
+else
+    TRUST="trusted=yes"
+fi
 for arch in all $ARCHS; do
-    echo "deb [trusted=yes] $FEED_URI/$RELEASE/$BSP/$arch ./"
+    echo "deb [$TRUST] $FEED_URI/$RELEASE/$BSP/$arch ./"
 done | awk '!seen[$0]++' > "$LIST"
 
 export DEBIAN_FRONTEND=noninteractive
 OVERWRITE="-o Dpkg::Options::=--force-overwrite"
+# Without this apt carries on with the index files it already has when a feed
+# cannot be read, which would install the wrong versions.
+STRICT="-o APT::Update::Error-Mode=any"
 apt-get update
 # shellcheck disable=SC2086
 apt-get install -y --allow-downgrades $OVERWRITE -o Dpkg::Options::=--force-confnew -o Dpkg::Options::=--force-confmiss \
@@ -98,7 +109,7 @@ if [ "$FEED_URI" != "$DEFAULT_URI" ]; then
     host="$(echo "$FEED_URI" | cut -d/ -f3 | cut -d: -f1)"
     sed -i "s#^Pin: origin .*#Pin: origin $host#" /etc/apt/preferences.d/edgefirst
 fi
-apt-get update
+apt-get update $STRICT
 # shellcheck disable=SC2086
 apt-get install -y --allow-downgrades $OVERWRITE -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold edgefirst-release
 # shellcheck disable=SC2086
