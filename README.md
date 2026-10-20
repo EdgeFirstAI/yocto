@@ -15,6 +15,12 @@ Yocto manifests for building EdgeFirst embedded Linux images on i.MX-based platf
 
 i.MX 8M Plus boards with the Ara-2 NPU hang under Ara-2 inference load on the 6.18.20 BSP, so they stay on the 6.12.49 branch for now. The NXP and PHYTEC branches pin [meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst) from its `main` branch, and the NXP branches also pin [meta-kinara](https://github.com/EdgeFirstAI/meta-kinara) for the Ara-2 NPU. PHYTEC's i.MX 8M Plus boards stay on PHYTEC's walnascar release line, since its wrynose line does not yet support them.
 
+## Products and Releases
+
+Every branch is an EdgeFirst Yocto product, named "EdgeFirst Yocto for VENDOR" (NXP, PHYTEC, Ezurio); Toradex is the exception because Torizon is the product users see ("Torizon with EdgeFirst"). The EdgeFirst Maivin platform has its own Torizon-based BSP, and ADIS has a customer-specific version of it. Every release of every product is versioned `YYYY.MM.PATCH` (for example `2026.10.0`); a published release is never changed, and a fix is the next `PATCH`.
+
+The NXP boards are the reference platform. NXP publishes a Yocto BSP quarterly, and each one is adopted first on the NXP branches. The vendor branches then receive the NPU, GPU, camera and vision-pipeline enablement their BSPs still lack, backported into `meta-edgefirst` and the vendor layers on `main`, so that vendors that omit NXP layers or ship them out of date get the same capabilities. Every platform is validated with the EdgeFirst Model Zoo on Hugging Face and the EFPI tests.
+
 ## Getting Started
 
 Initialize with the branch and the manifest it names, then follow that branch's README:
@@ -30,7 +36,7 @@ repo sync
 ## Branches and Tags
 
 - New platforms and BSPs get a branch named `edgefirst-<vendor>-<bsp-version>` holding a manifest of the same name, and are added to the table above.
-- Branches are maintained: they are re-pinned as meta-edgefirst and meta-kinara change, until the BSP is retired.
+- Branches are maintained: they are re-pinned together as meta-edgefirst, meta-kinara and the vendor layers change, until the BSP is retired.
 - Release tags (`v1.2.3`, ...) are fixed snapshots and are never updated.
 
 ## License
