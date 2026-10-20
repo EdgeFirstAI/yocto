@@ -165,6 +165,11 @@ PKGEOF
     # Install our bblayers.conf (NXP layers + EdgeFirst layers)
     cp "$EDGEFIRST_DIR/templates/imx/bblayers.conf" conf/bblayers.conf
 
+    # Install site-wide build policy (parallelism caps, fetcher settings, the
+    # EdgeFirst release). Kept in the manifest repo so it survives build-dir
+    # recreation.
+    cp "$EDGEFIRST_DIR/templates/imx/site.conf" conf/site.conf
+
     # Apply NXP machine/bbclass overrides: remove upstream files that
     # meta-imx layers override (same mechanism as imx-setup-release.sh)
     . "$CWD/sources/meta-imx/tools/setup-utils.sh"

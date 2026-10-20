@@ -19,6 +19,7 @@ EdgeFirstAI/yocto/
     copilot-instructions.md       # This file (CLAUDE.md format)
     scripts/
       repo-deploy.sh              # Publish images/SDKs to S3
+      publish-apt-feed.sh         # Sign and publish the apt feed
   templates/
     imx/
       bblayers.conf               # NXP layers + meta-edgefirst + meta-kinara
@@ -133,6 +134,53 @@ source edgefirst-setup -b build-imx8mp-frdm
 
 The script auto-discovers machines from `<build-dir>/tmp/deploy/images/*/` by looking for `{image}-*.rootfs.wic.zst`.
 
+## Package Feed and Board Updates
+
+### Release identity
+
+An EdgeFirst Yocto release is named `YYYY.MM` and published quarterly. Within a release the `PATCH` counts rolling updates: `EDGEFIRST_VERSION` is `YYYY.MM.PATCH` (`~dev` or `~rcN` ahead of the release it leads up to), set in `templates/imx/site.conf`. The vendor BSP version (`6.12.49-2.2.0`) is never altered: the kernel, `DISTRO_VERSION` and every NXP package keep their own versions. The EdgeFirst version is added next to it, and a release is always written as the pair "EdgeFirst Yocto 2026.10.1 for NXP i.MX BSP 6.12.49-2.2.0". `EDGEFIRST_FEED_BSP` (`imx-6.12.49-2.2.0`) and `EDGEFIRST_VENDOR` (`NXP i.MX`) in `site.conf` supply the BSP part; `conf/layer.conf` derives `EDGEFIRST_RELEASE` (`YYYY.MM`) and the BSP version from them.
+
+| Where | What it shows |
+|---|---|
+| `/etc/os-release` | NXP's `NAME`, `VERSION` and `VERSION_ID` untouched; added `EDGEFIRST_RELEASE`, `EDGEFIRST_VERSION`, `EDGEFIRST_BSP`; `PRETTY_NAME` is "EdgeFirst Yocto <version> for <vendor> BSP <bsp version>". `os-release.bbappend` sets the package revision to `r0.<EDGEFIRST_VERSION>` so a rolling update replaces the file |
+| `edgefirst-release` package | Version `EDGEFIRST_VERSION`; description names the BSP; `Provides: edgefirst-bsp-<bsp>` (the deb writer drops a version from a `Provides`, so the BSP version is in the name) |
+| Feed `Release` file | `Origin: EdgeFirst`, `Suite: <bsp>`, `Codename: <YYYY.MM>`, `Version: <YYYY.MM.PATCH>` |
+| Feed URL | `https://repo.edgefirst.ai/nxp/<YYYY.MM>/<bsp>/<package arch>/` |
+
+### How an update works
+
+Boards running these images update with `apt` from a signed deb feed. It is a developer convenience, not an industrial update system: there is no A/B, no automatic rollback and no transaction across the kernel and the root filesystem. The README has the user-facing description.
+
+- **PATCH updates** are `apt update && apt full-upgrade`. The feed of a release is a rolling channel: publishing replaces its contents.
+- **Quarterly release upgrades** are `edgefirst-release-upgrade` (installed by `edgefirst-apt-config`), in the spirit of Ubuntu's `do-release-upgrade`. It reads `nxp/meta-release`, a list of releases signed with the feed key (`meta-release` and detached `meta-release.asc`), picks the newest release whose `Upgrade-From` names the board's `RELEASE/BSP`, refuses unless the board is fully up to date and `/boot` is mounted with room, installs the new release's `edgefirst-apt-config` from the new feed's machine directory (which rewrites the feed list), then runs `apt full-upgrade`. A failure before the feed switch restores the old list; a failure after is finished by running the tool again. The new release may sit on a newer BSP, so this is also how a board changes BSP.
+
+### How it fits together
+
+| Piece | Where | What it does |
+|---|---|---|
+| `edgefirst-apt-config` | `meta-edgefirst` | Machine-specific package versioned `EDGEFIRST_VERSION`. Installs the signing key, one `sources.list.d` line per package architecture with `signed-by`, the pin, `/etc/edgefirst/feed.conf` and `edgefirst-release-upgrade`. Never use `PACKAGE_FEED_URIS`: oe-core writes `[trusted=yes]`, which turns signature checking off |
+| `edgefirst-release` | `meta-edgefirst` | Constant-name package versioned `EDGEFIRST_VERSION` that depends on the exact kernel image, device tree, module and `os-release` packages of the build, resolved from package data at `do_package` |
+| kernel image scripts | `linux-imx_%.bbappend` | Replace the stock `kernel-image-image` postinst and prerm. Install `/boot/Image` atomically, keep `Image.prev`, and never touch the active image when an older kernel is removed |
+| `edgefirst-apt-image` class | `meta-edgefirst`, inherited from `layer.conf` | Marks the image's `kernel-*` packages as automatically installed in `extended_states`, so `apt autoremove` retires an old kernel once `edgefirst-release` has moved on |
+| boot mount | `base-files_%.bbappend`, `EDGEFIRST_BOOT_MOUNT` | `LABEL=boot /boot vfat` in `fstab`, so packages write the partition U-Boot reads |
+| `publish-apt-feed.sh` | `.github/scripts` | Stages, indexes and signs the feed with the key in `~/edgefirst-ca/nxp`; `--upload` publishes; `--announce` adds the release to `meta-release` |
+
+### Constraints that are not obvious
+
+- **U-Boot loads `Image` and the `.dtb` from the FAT partition** (`fatload mmc ${mmcdev}:${mmcpart} ... ${image}`), never from the root filesystem. Without the `/boot` mount, `apt` updates a copy U-Boot never reads.
+- **Kernel packages carry the kernel version in their names**, so `apt full-upgrade` can never replace them by name. `edgefirst-release` exists to pull them. Its dependencies must be written as exact versioned names; a bare `kernel-image` is satisfied by the kernel that is already installed.
+- **Kernels must be co-installable.** meta-freescale makes each `kernel-<ver>` conflict with the GPU module that every kernel provides, so one kernel at a time. `apt full-upgrade` does not remove an installed package to make room for a new one (it holds the new kernel's modules back and removes `edgefirst-release` instead; `apt install edgefirst-release` works because it is protected as the request), so `linux-imx_%.bbappend` removes the conflict. The old kernel and its modules stay until `apt autoremove`, which also leaves the modules of the running kernel in place until after a reboot. Each kernel leaves about 35 MB on the 256 MB boot partition (`Image-<ver>`, plus `Image` and `Image.prev`).
+- **apt replaces a package only when its version string changes.** A patch or script change leaves the kernel version unchanged, so `linux-imx_%.bbappend` appends a digest of the local patches and scripts to the revision (`r0.<digest>`). The feed is pinned at priority 1001, so the revision has to differ between builds but does not have to increase. Anything else rebuilt without a version change is invisible to `apt`; bump `PR` on the recipe, or use a PR service if this becomes a problem. `os-release` and `edgefirst-apt-config` follow `EDGEFIRST_VERSION` so they always update.
+- **`edgefirst-release` has to be rebuilt after the kernel packages change**, and it is, because its `do_package` depends on the kernel's package data. A feed that mixes a new kernel with an old `edgefirst-release` is refused by `apt` rather than half-installed.
+- **Files read with `open()` in an anonymous Python function must be passed to `bb.parse.mark_dependency`**, or editing them does not invalidate the parse cache and bitbake reports non-deterministic metadata.
+- **The set of out-of-tree kernel modules is not covered** by `edgefirst-release`. Their packages are also named by kernel version, so a board that updates the kernel needs the matching builds of the modules it uses. They are in the feed from a full `imx-image-full` build; check that a rebuilt feed contains them before publishing.
+- **Packages shared between machines (`all`, `armv8a`, ...) are published into the same directory by each machine's publish.** `os-release` embeds a per-build `BUILD_ID`, so the copy from the last machine published wins; the contents that matter are identical.
+- **The feed key signs `Release`/`InRelease`/`Release.gpg` per architecture directory and `meta-release.asc`.** The CA directory README describes the key, rotation and verification.
+
+### Releasing
+
+Build `imx-image-full` for each machine with `EDGEFIRST_VERSION` set to the release (`YYYY.MM.PATCH`, no suffix), publish images with `repo-deploy.sh`, then publish each machine's feed with `publish-apt-feed.sh --upload`. When every machine of a new quarterly release is published, run `publish-apt-feed.sh --announce --upload --upgrade-from <old release>/<old bsp> <build dir>` for each BSP so that boards can find it. A PATCH update is the same build and publish with a higher `PATCH`; do not announce it. Check a published feed from a board with `apt update` and `apt list --upgradable`, and with a different key to confirm it is refused.
+
 ## Cross-Compilation SDK
 
 SDKs install to `/opt/fsl-imx-wayland-{version}-{board}/`.
@@ -242,7 +290,7 @@ The user keeps a local checkout of each branch somewhere on the host and will te
 
 Do not partially roll out silently. If one branch cannot take the update (for example a vendor kernel needs a backport first), land the fix in that vendor layer, re-pin it, and say which branches are on the new pin and which are not. Branches intentionally held back must say why in their CHANGELOG. A rollout that is part of a product release also bumps that product's `YYYY.MM.PATCH` version; the user decides when a release is ready to publish.
 
-Re-pinning the NXP branches also includes `meta-kinara`, and the 6.12.49 and 6.18.20 branches must always be re-pinned together.
+Re-pinning the NXP branches also includes `meta-kinara`, and the 6.12.49 and 6.18.20 branches must always be re-pinned together. A re-pin only reaches boards that update with `apt` once the BSP's package feed is rebuilt and published (see Package Feed and Board Updates).
 
 ## Tracking NXP BSP Releases and Owned Patches
 

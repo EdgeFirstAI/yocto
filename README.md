@@ -75,7 +75,82 @@ source edgefirst-setup -b build-imx8mp-frdm
 | `imx95-15x15-lpddr4x-frdm` | i.MX 95 FRDM |
 | `imx95-19x19-lpddr5-evk` | i.MX 95 EVK |
 
+## Updating a Board
+
+An EdgeFirst Yocto release is named `YYYY.MM` and published quarterly, and a release receives rolling `PATCH` updates, so a board runs `YYYY.MM.PATCH` such as 2026.10.1. The NXP BSP the release is built on keeps its own version, such as 6.12.49-2.2.0, and is never changed by EdgeFirst. Both are shown together:
+
+```bash
+$ grep -E '^(PRETTY_NAME|EDGEFIRST)' /etc/os-release
+PRETTY_NAME="EdgeFirst Yocto 2026.10.1 for NXP i.MX BSP 6.12.49-2.2.0"
+EDGEFIRST_RELEASE="2026.10"
+EDGEFIRST_VERSION="2026.10.1"
+EDGEFIRST_BSP="imx-6.12.49-2.2.0"
+```
+
+A board running an image from this branch updates itself over the network with `apt` from a signed package feed, `https://repo.edgefirst.ai/nxp/<release>/imx-6.12.49-2.2.0/`. This is meant to give developers a quick way to update the BSP, kernel included, and to add packages that are not in the base image, not to be an industrial update system.
+
+### Updates within a release
+
+```bash
+apt update
+apt full-upgrade
+reboot
+apt autoremove
+```
+
+`full-upgrade` is needed rather than `upgrade` because a new kernel arrives as new packages. The `edgefirst-release` package ties the operating system identification, kernel, device trees and modules together, so they always move as a set. Any package built for the BSP can be installed with `apt install <package>`, and `apt-cache search <text>` finds it.
+
+The boot partition is mounted on `/boot`, so the kernel and device trees that `apt` installs are the files U-Boot loads. The running kernel is `/boot/Image`, and the one it replaced is `/boot/Image.prev`. The new kernel is installed beside the old one, whose modules stay installed until `apt autoremove`, so `Image.prev` is a working fallback until then: set `image=Image.prev` in U-Boot to boot it. The boot partition is 256 MB and each kernel needs about 35 MB, so run `apt autoremove` after you have checked the new kernel, or remove one yourself with `apt remove kernel-<version>`.
+
+Every package comes from the feed, which is checked against the EdgeFirst package signing key. `apt` refuses a feed that is not signed by that key.
+
+### Moving an existing NXP image onto EdgeFirst
+
+A board that already runs an NXP image of the same BSP, with deb packages, can be moved onto the feed without reflashing. This is a best effort and is meant for images close to the ones built here; if it fails or the board is customised, reflash with an EdgeFirst image. An image that uses rpm or ipk packages has no `apt` and has to be reflashed.
+
+```bash
+wget https://repo.edgefirst.ai/nxp/edgefirst-adopt
+sudo sh edgefirst-adopt 2026.10 imx-6.12.49-2.2.0
+sudo reboot
+sudo apt autoremove
+```
+
+The script:
+
+- copies the boot partition and `/etc/fstab` to `/root/edgefirst-adopt-backup-<date>` first
+- fetches `gnupg` and `edgefirst-apt-config` from the feed over HTTPS without checking its signature, because the signing key arrives in `edgefirst-apt-config`; everything after that is checked against the key
+- mounts the boot partition on `/boot` so that kernels reach U-Boot
+- installs `edgefirst-release` and runs a full upgrade, which replaces the board's packages, its kernel and its device trees with the feed's builds of the same BSP, and keeps the board's own configuration files
+
+The kernel the board came with stays installed until `apt autoremove`, and the previous `Image` is kept as `/boot/Image.prev`. If the board does not boot, stop U-Boot, run `setenv image Image.prev` and boot; the original boot partition is in the backup directory. Local changes to files that a package ships are kept, but programs you installed outside of packages are left as they are and may not match the new libraries.
+
+### Moving to the next release
+
+A new quarterly release has its own feed and may be built on a newer NXP BSP. The release upgrade tool moves a board to it, in the spirit of Ubuntu's `do-release-upgrade`:
+
+```bash
+edgefirst-release-upgrade --check   # Is a newer release available?
+edgefirst-release-upgrade           # Move to it
+reboot
+apt autoremove
+```
+
+It reads the signed list of releases, refuses unless the board is fully up to date and `/boot` has room, switches `apt` to the new release's feed and runs the upgrade. A run that stops part way is finished by running the tool again. It makes a best effort and is not a guarantee: a release that changes the boot firmware, the partition layout or the Ara-2 card firmware still needs a reflash, and the release notes say so.
+
 ## Publishing
+
+Publish the package feed for a release and BSP from a build that has built `imx-image-full` with `.github/scripts/publish-apt-feed.sh`:
+
+```bash
+.github/scripts/publish-apt-feed.sh build-imx8mp-frdm            # Stage and sign under <build-dir>/apt-feed
+.github/scripts/publish-apt-feed.sh --upload build-imx8mp-frdm   # Publish to https://repo.edgefirst.ai/nxp/
+.github/scripts/publish-apt-feed.sh --announce --upload \
+    --upgrade-from 2026.10/imx-6.12.49-2.2.0 build-imx8mp-frdm   # Let boards find a new quarterly release
+```
+
+The feed is signed with the key in `~/edgefirst-ca/nxp` (see the README there), and the release, BSP name and architecture directories come from the `edgefirst-apt-config` package in the build, so the feed has the layout the images were built to read. A feed is the rolling channel of its release: publishing replaces the previous contents, and boards that run `apt update` and `apt full-upgrade` follow it. Debug, source and test packages are left out. Run it once per machine; the packages shared between machines are published once. `--announce` is only for a new quarterly release, once every machine's feed for it is published; a PATCH update is announced by being in the feed.
+
+Set the release a build belongs to with `EDGEFIRST_VERSION` in `conf/local.conf`, as `YYYY.MM.PATCH`. The default in `templates/imx/site.conf` is `~dev` ahead of the next release, so a release build sets it without the suffix, and a release candidate uses `~rcN`.
 
 Upload built images and SDKs to S3 with `repo-deploy.sh`:
 
