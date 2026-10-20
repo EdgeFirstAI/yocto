@@ -122,12 +122,22 @@ The output is in `tmp/deploy/images/<machine>/`: `image-edgefirst-<machine>-<ver
 A build without a release version is a development build named by build time, with an unsigned `.swu`. A release is built with:
 
 ```bash
-EDGEFIRST_RELEASE=2026.10.0 EDGEFIRST_CERT_PATH=<EdgeFirst CA directory> \
+EDGEFIRST_VERSION=2026.10.0 EDGEFIRST_CERT_PATH=<EdgeFirst CA directory> \
     MACHINE=imx95-nitrogen-smarc . edgefirst-setup -b build-imx95
 bitbake image-edgefirst
 ```
 
-`EDGEFIRST_RELEASE` names the files and sets the version in `/etc/os-release`. `EDGEFIRST_CERT_PATH` holds the CA material: the root certificate in `root/`, and in `ezurio/` the vendor CA certificate, the signing certificate and its private key. With it set the `.swu` is signed and the image trusts the EdgeFirst root. Both variables are read each time `edgefirst-setup` runs, so set them again when re-entering the build directory.
+`EDGEFIRST_VERSION` names the files and is recorded in `/etc/os-release` (`YYYY.MM.PATCH~rcN` is a release candidate, `-rcN` in file names). `EDGEFIRST_CERT_PATH` holds the CA material: the root certificate in `root/`, and in `ezurio/` the vendor CA certificate, the signing certificate and its private key. With it set the `.swu` is signed and the image trusts the EdgeFirst root. Both variables are read each time `edgefirst-setup` runs, so set them again when re-entering the build directory.
+
+A release is named `YYYY.MM` and published quarterly, and each update to it is a new `PATCH`, so a board runs `YYYY.MM.PATCH`. The Ezurio BSP it is built on keeps its own version and is shown alongside:
+
+```bash
+$ grep -E '^(PRETTY_NAME|EDGEFIRST)' /etc/os-release
+PRETTY_NAME="EdgeFirst Yocto 2026.10.0 for Ezurio Summit BSP 6.16.0.27"
+EDGEFIRST_RELEASE="2026.10"
+EDGEFIRST_VERSION="2026.10.0"
+EDGEFIRST_BSP="summit-6.16.0.27"
+```
 
 [meta-edgefirst-ezurio](https://github.com/EdgeFirstAI/meta-edgefirst-ezurio) has `scripts/publish-release.sh` to upload a finished release to the repository.
 

@@ -3,7 +3,7 @@
 #
 # Usage: MACHINE=<machine> [DISTRO=<distro>] . edgefirst-setup [-b build-dir]
 #
-# Release builds also set EDGEFIRST_RELEASE=YYYY.MM.PATCH and, to sign the
+# Release builds also set EDGEFIRST_VERSION=YYYY.MM.PATCH and, to sign the
 # .swu, EDGEFIRST_CERT_PATH=<EdgeFirst CA directory>.
 #
 # Creates (or re-enters) a build directory through Ezurio's own
@@ -35,12 +35,13 @@ and EGL userspace. Re-entering an existing build directory needs neither.
 
 Environment, read on every run (not only when creating a build directory):
 
-  EDGEFIRST_RELEASE    Release version as YYYY.MM.PATCH. Names the images,
-                       sets os-release and the login banner. Unset builds are
-                       development builds named by build time.
+  EDGEFIRST_VERSION    Release version as YYYY.MM.PATCH, or YYYY.MM.PATCH~rcN
+                       for a release candidate. Names the images (-rcN in file
+                       names) and sets os-release. Unset builds are development
+                       builds named by build time.
   EDGEFIRST_CERT_PATH  EdgeFirst CA directory. When set the .swu is signed and
                        the image trusts the EdgeFirst root; when unset the
-                       image is unsigned. Required with EDGEFIRST_RELEASE.
+                       image is unsigned. Required with EDGEFIRST_VERSION.
   EDGEFIRST_SIGNING_CERT_PATH, EDGEFIRST_SIGNING_VENDOR, EDGEFIRST_SIGNING_LEAF
                        Optional. Take the signing material from another CA
                        directory, vendor or leaf than the trusted one, for a
@@ -104,23 +105,31 @@ else
 fi
 
 if [ -n "${EDGEFIRST_RELEASE:-}" ]; then
-    case $EDGEFIRST_RELEASE in
-        [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9]|[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]) ;;
+    echo "ERROR: EDGEFIRST_RELEASE is now EDGEFIRST_VERSION; EDGEFIRST_RELEASE names the quarterly YYYY.MM release."
+    edgefirst_clean_up
+    return 1
+fi
+
+if [ -n "${EDGEFIRST_VERSION:-}" ]; then
+    case $EDGEFIRST_VERSION in
+        [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9]|[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]|\
+        [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9]~rc[0-9]|[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9]~rc[0-9][0-9]|\
+        [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]~rc[0-9]|[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]~rc[0-9][0-9]) ;;
         *)
-            echo "ERROR: EDGEFIRST_RELEASE must be YYYY.MM.PATCH, for example 2026.10.0."
+            echo "ERROR: EDGEFIRST_VERSION must be YYYY.MM.PATCH or YYYY.MM.PATCH~rcN, for example 2026.10.0."
             edgefirst_clean_up
             return 1
             ;;
     esac
     # Ezurio's script turns VERSION into the image suffix and SUMMIT_VERSION.
-    export VERSION="$EDGEFIRST_RELEASE"
-    export SUMMIT_RELEASE_STRING="EdgeFirst Yocto for Ezurio $EDGEFIRST_RELEASE"
-fi
-
-if [ -n "${EDGEFIRST_RELEASE:-}" ] && [ -z "${EDGEFIRST_CERT_PATH:-}" ]; then
-    echo "ERROR: a release build needs EDGEFIRST_CERT_PATH so the .swu is signed and the image trusts the EdgeFirst root."
-    edgefirst_clean_up
-    return 1
+    # A release candidate is ~rcN in the version and -rcN in file names.
+    export VERSION="${EDGEFIRST_VERSION/\~/-}"
+    if [ -z "${EDGEFIRST_CERT_PATH:-}" ]; then
+        echo "ERROR: a release build needs EDGEFIRST_CERT_PATH so the .swu is signed and the image trusts the EdgeFirst root."
+        edgefirst_clean_up
+        return 1
+    fi
+    export EDGEFIRST_VERSION
 fi
 
 if [ -n "${EDGEFIRST_CERT_PATH:-}" ]; then
@@ -131,7 +140,7 @@ if [ -n "${EDGEFIRST_CERT_PATH:-}" ]; then
     fi
     export EDGEFIRST_CERT_PATH
 fi
-export BB_ENV_PASSTHROUGH_ADDITIONS="${BB_ENV_PASSTHROUGH_ADDITIONS:-} EDGEFIRST_CERT_PATH EDGEFIRST_SIGNING_CERT_PATH EDGEFIRST_SIGNING_VENDOR EDGEFIRST_SIGNING_LEAF"
+export BB_ENV_PASSTHROUGH_ADDITIONS="${BB_ENV_PASSTHROUGH_ADDITIONS:-} EDGEFIRST_VERSION EDGEFIRST_CERT_PATH EDGEFIRST_SIGNING_CERT_PATH EDGEFIRST_SIGNING_VENDOR EDGEFIRST_SIGNING_LEAF"
 
 # Ezurio's script prompts for the NXP EULA unless ACCEPT_FSL_EULA is already
 # set in local.conf or EULA is set in the environment.
