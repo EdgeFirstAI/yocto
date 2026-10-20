@@ -18,7 +18,9 @@
 # EDGEFIRST_FEED_EXCLUDE to change that.
 #
 # --announce adds the release and BSP of BUILD_DIR to the signed list of releases
-# that edgefirst-release-upgrade reads (nxp/meta-release), once every machine's
+# that edgefirst-release-upgrade reads (nxp/meta-release), and publishes
+# edgefirst-adopt, the script that moves an existing NXP image onto the feed,
+# once every machine's
 # feed for it is published. Each --upgrade-from names a release and BSP, as
 # 2026.10/imx-6.18.20-2.0.0, that boards may be moved to this one from.
 #
@@ -85,13 +87,15 @@ if [ "$ANNOUNCE" -eq 1 ]; then
     } >> "$META"
     rm -f "$META.live"
     gpg_sign --armor --detach-sign --output "$META.asc" "$META"
+    cp "$(dirname "$0")/edgefirst-adopt.sh" "$STAGE/edgefirst-adopt"
     echo "==> release list staged in $STAGE"
     cat "$META"
     [ "$UPLOAD" -eq 1 ] || { echo "(not uploaded; pass --upload to publish)"; exit 0; }
     aws s3 cp "$META" "$BUCKET/meta-release" --cache-control "public, max-age=60" --only-show-errors
     aws s3 cp "$META.asc" "$BUCKET/meta-release.asc" --cache-control "public, max-age=60" --only-show-errors
-    aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/nxp/meta-release*" >/dev/null
-    echo "==> published to https://repo.edgefirst.ai/nxp/meta-release"
+    aws s3 cp "$STAGE/edgefirst-adopt" "$BUCKET/edgefirst-adopt" --content-type text/plain --cache-control "public, max-age=300" --only-show-errors
+    aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/nxp/meta-release*" "/nxp/edgefirst-adopt" >/dev/null
+    echo "==> published to https://repo.edgefirst.ai/nxp/meta-release and edgefirst-adopt"
     exit 0
 fi
 

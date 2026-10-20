@@ -104,6 +104,26 @@ The boot partition is mounted on `/boot`, so the kernel and device trees that `a
 
 Every package comes from the feed, which is checked against the EdgeFirst package signing key. `apt` refuses a feed that is not signed by that key.
 
+### Moving an existing NXP image onto EdgeFirst
+
+A board that already runs an NXP image of the same BSP, with deb packages, can be moved onto the feed without reflashing. This is a best effort and is meant for images close to the ones built here; if it fails or the board is customised, reflash with an EdgeFirst image. An image that uses rpm or ipk packages has no `apt` and has to be reflashed.
+
+```bash
+wget https://repo.edgefirst.ai/nxp/edgefirst-adopt
+sudo sh edgefirst-adopt 2026.10 imx-6.18.20-2.0.0
+sudo reboot
+sudo apt autoremove
+```
+
+The script:
+
+- copies the boot partition and `/etc/fstab` to `/root/edgefirst-adopt-backup-<date>` first
+- fetches `gnupg` and `edgefirst-apt-config` from the feed over HTTPS without checking its signature, because the signing key arrives in `edgefirst-apt-config`; everything after that is checked against the key
+- mounts the boot partition on `/boot` so that kernels reach U-Boot
+- installs `edgefirst-release` and runs a full upgrade, which replaces the board's packages, its kernel and its device trees with the feed's builds of the same BSP, and keeps the board's own configuration files
+
+The kernel the board came with stays installed until `apt autoremove`, and the previous `Image` is kept as `/boot/Image.prev`. If the board does not boot, stop U-Boot, run `setenv image Image.prev` and boot; the original boot partition is in the backup directory. Local changes to files that a package ships are kept, but programs you installed outside of packages are left as they are and may not match the new libraries.
+
 ### Moving to the next release
 
 A new quarterly release has its own feed and may be built on a newer NXP BSP. The release upgrade tool moves a board to it, in the spirit of Ubuntu's `do-release-upgrade`:
