@@ -278,7 +278,8 @@ Vendor BSPs run older or different kernels and ML layers than the NXP reference,
 - **Vendor kernel diverges from `linux-imx`** (different base version, vendor fork, different patch queue and numbering): the vendor layer carries its own copy, rebased onto that kernel. The vendor bbappend must say what the patch is, which NXP commit it mirrors, which firmware or userspace version it is coupled to, and the condition for dropping it (for example "vendor kernel reaches 6.18.37"). Today the Neutron mailbox handshake rework is carried this way by every vendor layer that supports i.MX 95.
 - **Scope the patch** to the SoC or machine that has the hardware (for example i.MX 95 only for Neutron) so the same recipe name on another SoC is unaffected.
 - **Coupled changes ship together.** If a userspace bump in `meta-edgefirst` requires a kernel change (the Neutron SDK and its kernel handshake are the current example), every vendor branch that will take the bump needs the kernel change in its vendor layer *before* it is re-pinned. Check this at step 5 of the rollout procedure.
-- **Retire carried patches** when the vendor's kernel moves past them. Each vendor branch's CHANGELOG records what it carries and why, so the list can be audited at every rollout.
+- **Make backports self-contained.** Vendors often omit NXP layers or ship them far out of date, so a backport never requires or depends on a recipe from an NXP layer (meta-freescale-ml, meta-imx-ml and so on): copy what it needs into our recipe and let version precedence win over NXP's copy. Check that every layer stack still parses without the NXP layers it lacks, in particular Torizon for Maivin, which has no `meta-freescale-ml`. Backports go straight to `main` of the layer with no pull request.
+- **Retire carried patches** when the vendor's kernel moves past them. Record each carried patch and its condition for dropping in the vendor layer, so the list can be audited at every rollout.
 
 ### Owned items and where they apply (keep current)
 
@@ -880,6 +881,10 @@ github.com/EdgeFirstAI/<pkg>/blob/v<ver>/CHANGELOG.md   # Package-level: detaile
 2. Collapse intermediate version bumps — only show the final version (e.g., HAL 0.8.0 → 0.16.2, not the full chain)
 3. Update `edgefirst-yocto/CHANGELOG.md` with the layer summaries and links
 4. Commit the changelogs, then tag
+
+### What a branch changelog records
+
+A branch `CHANGELOG.md` records what a user of that BSP can see: release versions, runtime and package versions, supported boards and features, installation and update behaviour, and image changes. It does not record how Yocto is put together: manifest pins, layer moves, recipe and packagegroup restructuring and other build-system details belong in commit messages and the layer changelogs. Ask the user before changing a changelog.
 
 ### Package changelog URL pattern
 
