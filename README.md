@@ -77,30 +77,58 @@ source edgefirst-setup -b build-imx8mp-frdm
 
 ## Updating a Board
 
-A board running an image from this branch can update itself over the network with `apt` from a signed package feed, `https://repo.edgefirst.ai/nxp/imx-6.18.20-2.0.0/`. The feed follows this NXP BSP only, so moving to another BSP is a reflash. It is meant to give developers a quick way to update the BSP, kernel included, and to add packages that are not in the base image, not to be an industrial update system.
+An EdgeFirst Yocto release is named `YYYY.MM` and published quarterly, and a release receives rolling `PATCH` updates, so a board runs `YYYY.MM.PATCH` such as 2026.10.1. The NXP BSP the release is built on keeps its own version, such as 6.18.20-2.0.0, and is never changed by EdgeFirst. Both are shown together:
+
+```bash
+$ grep -E '^(PRETTY_NAME|EDGEFIRST)' /etc/os-release
+PRETTY_NAME="EdgeFirst Yocto 2026.10.1 for NXP i.MX BSP 6.18.20-2.0.0"
+EDGEFIRST_RELEASE="2026.10"
+EDGEFIRST_VERSION="2026.10.1"
+EDGEFIRST_BSP="imx-6.18.20-2.0.0"
+```
+
+A board running an image from this branch updates itself over the network with `apt` from a signed package feed, `https://repo.edgefirst.ai/nxp/<release>/imx-6.18.20-2.0.0/`. This is meant to give developers a quick way to update the BSP, kernel included, and to add packages that are not in the base image, not to be an industrial update system.
+
+### Updates within a release
 
 ```bash
 apt update
 apt full-upgrade
 reboot
+apt autoremove
 ```
 
-`full-upgrade` is needed rather than `upgrade` because a new kernel arrives as new packages. `cat /etc/edgefirst-release` shows the EdgeFirst release the board runs. The `edgefirst-release` package ties the kernel, its device trees and its modules together, so they always move as a set. Any package built for the BSP can be installed with `apt install <package>`, and `apt-cache search <text>` finds it.
+`full-upgrade` is needed rather than `upgrade` because a new kernel arrives as new packages. The `edgefirst-release` package ties the operating system identification, kernel, device trees and modules together, so they always move as a set. Any package built for the BSP can be installed with `apt install <package>`, and `apt-cache search <text>` finds it.
 
-The boot partition is mounted on `/boot`, so the kernel and device trees that `apt` installs are the files U-Boot loads. The running kernel is `/boot/Image`, and the one it replaced is `/boot/Image.prev`. Only one kernel's modules are installed at a time, so `Image.prev` is for getting a board to a prompt, not for running it: set `image=Image.prev` in U-Boot to boot it. The boot partition is 256 MB and a kernel is about 35 MB, so remove a kernel you no longer need with `apt remove kernel-image-image-<version>`.
+The boot partition is mounted on `/boot`, so the kernel and device trees that `apt` installs are the files U-Boot loads. The running kernel is `/boot/Image`, and the one it replaced is `/boot/Image.prev`. The new kernel is installed beside the old one, whose modules stay installed until `apt autoremove`, so `Image.prev` is a working fallback until then: set `image=Image.prev` in U-Boot to boot it. The boot partition is 256 MB and each kernel needs about 35 MB, so run `apt autoremove` after you have checked the new kernel, or remove one yourself with `apt remove kernel-<version>`.
 
 Every package comes from the feed, which is checked against the EdgeFirst package signing key. `apt` refuses a feed that is not signed by that key.
 
+### Moving to the next release
+
+A new quarterly release has its own feed and may be built on a newer NXP BSP. The release upgrade tool moves a board to it, in the spirit of Ubuntu's `do-release-upgrade`:
+
+```bash
+edgefirst-release-upgrade --check   # Is a newer release available?
+edgefirst-release-upgrade           # Move to it
+reboot
+apt autoremove
+```
+
+It reads the signed list of releases, refuses unless the board is fully up to date and `/boot` has room, switches `apt` to the new release's feed and runs the upgrade. A run that stops part way is finished by running the tool again. It makes a best effort and is not a guarantee: a release that changes the boot firmware, the partition layout or the Ara-2 card firmware still needs a reflash, and the release notes say so.
+
 ## Publishing
 
-Publish the package feed for a BSP from a build that has built `imx-image-full` with `.github/scripts/publish-apt-feed.sh`:
+Publish the package feed for a release and BSP from a build that has built `imx-image-full` with `.github/scripts/publish-apt-feed.sh`:
 
 ```bash
 .github/scripts/publish-apt-feed.sh build-imx95-frdm            # Stage and sign under <build-dir>/apt-feed
 .github/scripts/publish-apt-feed.sh --upload build-imx95-frdm   # Publish to https://repo.edgefirst.ai/nxp/
+.github/scripts/publish-apt-feed.sh --announce --upload \
+    --upgrade-from 2026.10/imx-6.18.20-2.0.0 build-imx95-frdm   # Let boards find a new quarterly release
 ```
 
-The feed is signed with the key in `~/edgefirst-ca/nxp` (see the README there), and the BSP name and architecture directories come from the `edgefirst-apt-config` package in the build, so the feed has the layout the images were built to read. Publishing replaces the previous contents of the BSP's feed, which makes it a rolling channel for that BSP, and boards that run `apt update` and `apt full-upgrade` follow it. Debug, source and test packages are left out. Run it once per machine; the packages shared between machines are published once.
+The feed is signed with the key in `~/edgefirst-ca/nxp` (see the README there), and the release, BSP name and architecture directories come from the `edgefirst-apt-config` package in the build, so the feed has the layout the images were built to read. A feed is the rolling channel of its release: publishing replaces the previous contents, and boards that run `apt update` and `apt full-upgrade` follow it. Debug, source and test packages are left out. Run it once per machine; the packages shared between machines are published once. `--announce` is only for a new quarterly release, once every machine's feed for it is published; a PATCH update is announced by being in the feed.
 
 Set the release a build belongs to with `EDGEFIRST_VERSION` in `conf/local.conf`, as `YYYY.MM.PATCH`. The default in `templates/imx/site.conf` is `~dev` ahead of the next release, so a release build sets it without the suffix, and a release candidate uses `~rcN`.
 
