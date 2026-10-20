@@ -4,6 +4,8 @@ EdgeFirst on Ezurio Nitrogen SMARC boards. The image is built from Ezurio's `SUM
 
 This is the `edgefirst-ezurio-6.16.0.27` branch of [EdgeFirstAI/yocto](https://github.com/EdgeFirstAI/yocto). The `main` branch lists every supported branch.
 
+This branch is **EdgeFirst Yocto for Ezurio**, one of the EdgeFirst Yocto products. Releases are versioned `YYYY.MM.PATCH` (for example `2026.10.0`), and a published release is never changed; a fix is the next `PATCH`. All the branches share one set of NPU, GPU, camera and vision-pipeline enablement through [meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst), which is kept current by re-pinning every branch together, and the NXP boards are the reference platform where each new NXP BSP is adopted first.
+
 ## Supported Machines
 
 | MACHINE | Board | NPU |
