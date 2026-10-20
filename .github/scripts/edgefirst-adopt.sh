@@ -13,12 +13,16 @@
 # for images that are close to ours; an image with a different package set or a
 # customised root filesystem is better reflashed.
 #
+# EDGEFIRST_FEED_URI points the board at a mirror of the feed instead of
+# https://repo.edgefirst.ai/nxp.
+#
 # The feed's signing key arrives in a package, so the first packages are fetched
 # from the feed over HTTPS without checking its signature. Everything after that
 # is checked against the key.
 set -eu
 
-FEED_URI="${EDGEFIRST_FEED_URI:-https://repo.edgefirst.ai/nxp}"
+DEFAULT_URI=https://repo.edgefirst.ai/nxp
+FEED_URI="${EDGEFIRST_FEED_URI:-$DEFAULT_URI}"
 ASSUME_YES=0
 ARGS=""
 for a in "$@"; do
@@ -46,9 +50,13 @@ fi
 BOOT_DEV="$(blkid -L boot 2>/dev/null)" || die "no partition is labelled boot; this is not a layout the update mechanism supports"
 MACHINE_ARCH="$(dpkg-query -W -f '${PackageArch}' base-files 2>/dev/null || true)"
 [ -n "$MACHINE_ARCH" ] || die "cannot tell the machine from the installed packages"
-ARCHS="$(dpkg-query -W -f '${PackageArch}\n' 2>/dev/null | sort -u | grep -v '^$' | tr '\n' ' ')"
+# Package architectures are written with dashes in the package metadata, but the
+# feed names the directory of the machine's own packages with underscores.
+ARCHS="$(dpkg-query -W -f '${PackageArch}\n' 2>/dev/null | sort -u | grep -v '^$' \
+    | sed "s/^$MACHINE_ARCH\$/$(echo "$MACHINE_ARCH" | tr - _)/" | tr '\n' ' ')"
 
 echo "Machine package architecture: $MACHINE_ARCH"
+echo "Feed directories: all $ARCHS"
 echo "Feed: $FEED_URI/$RELEASE/$BSP"
 echo "Boot partition: $BOOT_DEV"
 if [ "$ASSUME_YES" -eq 0 ]; then
@@ -79,13 +87,22 @@ for arch in all $ARCHS; do
 done | awk '!seen[$0]++' > "$LIST"
 
 export DEBIAN_FRONTEND=noninteractive
+OVERWRITE="-o Dpkg::Options::=--force-overwrite"
 apt-get update
-apt-get install -y --allow-downgrades -o Dpkg::Options::=--force-confnew -o Dpkg::Options::=--force-confmiss \
+# shellcheck disable=SC2086
+apt-get install -y --allow-downgrades $OVERWRITE -o Dpkg::Options::=--force-confnew -o Dpkg::Options::=--force-confmiss \
     gnupg edgefirst-apt-config
 # The package replaced the list with the signed one; from here the feed is checked.
+if [ "$FEED_URI" != "$DEFAULT_URI" ]; then
+    sed -i "s#$DEFAULT_URI#$FEED_URI#" "$LIST"
+    host="$(echo "$FEED_URI" | cut -d/ -f3 | cut -d: -f1)"
+    sed -i "s#^Pin: origin .*#Pin: origin $host#" /etc/apt/preferences.d/edgefirst
+fi
 apt-get update
-apt-get install -y --allow-downgrades -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold edgefirst-release
-apt-get full-upgrade -y --allow-downgrades -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold
+# shellcheck disable=SC2086
+apt-get install -y --allow-downgrades $OVERWRITE -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold edgefirst-release
+# shellcheck disable=SC2086
+apt-get full-upgrade -y --allow-downgrades $OVERWRITE -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold
 
 # The kernel packages the image came with are now older than the feed's. Their
 # stock removal script deletes /boot/Image whichever kernel it belongs to, so it
