@@ -287,7 +287,7 @@ As of 2026-10-19; update this table whenever a rollout or an NXP BSP upgrade cha
 |---|---|---|---|---|
 | Neutron dma-buf export (kernel) | `meta-edgefirst` patch | in NXP tree since 6.18.20, do not port | `meta-edgefirst` patch reused by vendors | i.MX 95 only |
 | Neutron namespace import (kernel) | `meta-edgefirst` patch | in NXP tree | `meta-edgefirst` patch | 6.12 syntax unquoted |
-| Neutron mailbox handshake (kernel, for SDK 3.2.x) | each vendor layer | in NXP 6.18.37; absent in 6.18.20 | vendor layer copy | version lock with SDK 3.2.x firmware |
+| Neutron mailbox handshake (kernel, for SDK 3.2.x) | `meta-edgefirst` patch for NXP `linux-imx`; each vendor layer for its own kernel | `meta-edgefirst` patch, applied below 6.18.37 (in NXP 6.18.37) | not needed (i.MX 8M Plus only); vendor layer copy where the kernel has a Neutron NPU | version lock with SDK 3.2.x firmware; may move to a future `meta-edgefirst-nxp` |
 | Neutron SDK 3.2.3 target binaries | `EdgeFirstAI/neutron` fork via `meta-edgefirst` | all | all | NXP's own tree carries an older SDK |
 | tim-vx dma-buf tensor API | `tim-vx-imx` fork | rebase on NXP branch each BSP | same | |
 | VX delegate dma-buf + CameraAdaptor | `tflite-vx-delegate-imx` fork | rebase | same | i.MX 8M Plus |
