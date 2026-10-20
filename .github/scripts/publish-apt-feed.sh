@@ -108,13 +108,20 @@ for target in "${TARGETS[@]}"; do
     mkdir -p "$out"
 
     if [ -d "$DEB_DIR/$arch" ]; then
-        for deb in "$DEB_DIR/$arch"/*.deb; do
+        # The deploy directory keeps every version a build has produced; the feed
+        # takes the newest build of each package.
+        declare -A seen=()
+        for deb in $(ls -t "$DEB_DIR/$arch"/*.deb); do
+            name="$(basename "$deb")"; name="${name%%_*}"
+            [ -z "${seen[$name]:-}" ] || continue
+            seen[$name]=1
             skip=0
             for suffix in $EXCLUDE; do
                 case "$deb" in *"$suffix"_*.deb) skip=1 ;; esac
             done
             [ "$skip" -eq 1 ] || ln "$deb" "$out/" 2>/dev/null || cp "$deb" "$out/"
         done
+        unset seen
     fi
 
     (

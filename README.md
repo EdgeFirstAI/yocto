@@ -87,7 +87,7 @@ EDGEFIRST_VERSION="2026.10.1"
 EDGEFIRST_BSP="imx-6.18.20-2.0.0"
 ```
 
-The update mechanism is opt-in. It is switched on by `EDGEFIRST_APT_FEED = "1"` in `conf/site.conf`, which `edgefirst-setup` installs from `templates/imx/site.conf` together with the release, the BSP name and the `/boot` mount; the NXP builds in this branch have it on, and builds for other vendors leave it off. With it on, the build adds the signed feed configuration, names the release in `/etc/os-release`, packages the kernel and device trees so that `apt` can update them, and installs `edgefirst-release` in the image. With it off none of that is applied, whatever else the build sets.
+The update mechanism is opt-in. It is switched on by `EDGEFIRST_APT_FEED = "1"` in `conf/site.conf`, which `edgefirst-setup` installs from `templates/imx/site.conf` together with the release and the BSP name; the NXP builds in this branch have it on, and builds for other vendors leave it off. With it on, the build adds the signed feed configuration, names the release in `/etc/os-release`, packages the kernel and device trees so that `apt` can update them, and installs `edgefirst-release` in the image. With it off none of that is applied, whatever else the build sets.
 
 A board running an image from this branch updates itself over the network with `apt` from a signed package feed, `https://repo.edgefirst.ai/nxp/<release>/imx-6.18.20-2.0.0/`. This is meant to give developers a quick way to update the BSP, kernel included, and to add packages that are not in the base image, not to be an industrial update system.
 
@@ -102,7 +102,7 @@ apt autoremove
 
 `full-upgrade` is needed rather than `upgrade` because a new kernel arrives as new packages. The `edgefirst-release` package ties the operating system identification, kernel, device trees and modules together, so they always move as a set. Any package built for the BSP can be installed with `apt install <package>`, and `apt-cache search <text>` finds it.
 
-The boot partition is mounted on `/boot`, so the kernel and device trees that `apt` installs are the files U-Boot loads. The running kernel is `/boot/Image`, and the one it replaced is `/boot/Image.prev`. Each installed kernel keeps its files in `/usr/lib/linux-boot/<version>`, and installing it copies them to `/boot`, so the boot partition only ever holds two kernels however many are installed. A new kernel is installed beside the old one, whose modules stay installed until `apt autoremove`, so `Image.prev` is a working fallback until then: set `image=Image.prev` in U-Boot to boot it. Run `apt autoremove` after you have checked the new kernel, or remove one yourself with `apt remove kernel-<version>`.
+The kernel and device trees are installed into `/boot` on the root filesystem, like any package, and installing them copies them to the boot partition that U-Boot reads, wherever the system has it mounted. The boot partition holds the running kernel as `Image` and the one it replaced as `Image.prev`, however many kernels are installed. A new kernel is installed beside the old one, whose modules stay installed until `apt autoremove`, so `Image.prev` is a working fallback until then: set `image=Image.prev` in U-Boot to boot it. Run `apt autoremove` after you have checked the new kernel, or remove one yourself with `apt remove kernel-<version>`.
 
 Every package comes from the feed, which is checked against the EdgeFirst package signing key. `apt` refuses a feed that is not signed by that key.
 
@@ -119,12 +119,11 @@ sudo apt autoremove
 
 The script:
 
-- copies the boot partition and `/etc/fstab` to `/root/edgefirst-adopt-backup-<date>` first
+- copies the boot partition to `/root/edgefirst-adopt-backup-<date>` first
 - fetches `gnupg` and `edgefirst-apt-config` from the feed over HTTPS without checking its signature, because the signing key arrives in `edgefirst-apt-config`; everything after that is checked against the key
-- mounts the boot partition on `/boot` so that kernels reach U-Boot (`edgefirst-boot-mount`)
 - installs `edgefirst-release` and runs a full upgrade, which replaces the board's packages, its kernel and its device trees with the feed's builds of the same BSP, and keeps the board's own configuration files
 
-The kernel the board came with stays installed until `apt autoremove`, and the previous `Image` is kept as `/boot/Image.prev`. If the board does not boot, stop U-Boot, run `setenv image Image.prev` and boot; the original boot partition is in the backup directory. Local changes to files that a package ships are kept, but programs you installed outside of packages are left as they are and may not match the new libraries.
+The kernel the board came with stays installed until `apt autoremove`, and the previous `Image` is kept as `Image.prev` on the boot partition. If the board does not boot, stop U-Boot, run `setenv image Image.prev` and boot; the original boot partition is in the backup directory. Local changes to files that a package ships are kept, but programs you installed outside of packages are left as they are and may not match the new libraries.
 
 ### Moving to the next release
 
