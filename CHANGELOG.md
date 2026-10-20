@@ -7,6 +7,12 @@ For per-package details, see the layer changelogs linked below.
 
 ## [Unreleased]
 
+### Images and NPU runtimes
+
+- EdgeFirst services and libraries move to their latest releases, including EdgeFirst HAL 0.28.3, videostream 2.6.1, edgefirst-client 2.17.0 and edgefirst-profiler 1.19.0. The [meta-edgefirst CHANGELOG](https://github.com/EdgeFirstAI/meta-edgefirst/blob/main/CHANGELOG.md) has the full version table.
+- The Neutron NPU on i.MX 95 runs eIQ Neutron SDK 3.2.3, which YOLO11 and YOLO26 models need for accuracy. The kernel gains the matching Neutron mailbox handshake, so the kernel and the 3.2.x firmware must be used together; they are installed together in the image.
+- Compiling a model from several threads at the same time no longer fails on the Vivante NPU (i.MX 8M Plus).
+
 ### Branch per BSP
 
 - This branch, `edgefirst-imx-6.18.20-2.0.0`, replaces the `wrynose-6.18.20` bring-up branch and carries only the `edgefirst-imx-6.18.20-2.0.0.xml` manifest, whose self-reference now points at this branch. Every supported platform/BSP now has its own branch, and `main` becomes an index of them.
