@@ -75,7 +75,34 @@ source edgefirst-setup -b build-imx8mp-frdm
 | `imx95-15x15-lpddr4x-frdm` | i.MX 95 FRDM |
 | `imx95-19x19-lpddr5-evk` | i.MX 95 EVK |
 
+## Updating a Board
+
+A board running an image from this branch can update itself over the network with `apt` from a signed package feed, `https://repo.edgefirst.ai/nxp/imx-6.18.20-2.0.0/`. The feed follows this NXP BSP only, so moving to another BSP is a reflash. It is meant to give developers a quick way to update the BSP, kernel included, and to add packages that are not in the base image, not to be an industrial update system.
+
+```bash
+apt update
+apt full-upgrade
+reboot
+```
+
+`full-upgrade` is needed rather than `upgrade` because a new kernel arrives as new packages. `cat /etc/edgefirst-release` shows the EdgeFirst release the board runs. The `edgefirst-release` package ties the kernel, its device trees and its modules together, so they always move as a set. Any package built for the BSP can be installed with `apt install <package>`, and `apt-cache search <text>` finds it.
+
+The boot partition is mounted on `/boot`, so the kernel and device trees that `apt` installs are the files U-Boot loads. The running kernel is `/boot/Image`, and the one it replaced is `/boot/Image.prev`. Only one kernel's modules are installed at a time, so `Image.prev` is for getting a board to a prompt, not for running it: set `image=Image.prev` in U-Boot to boot it. The boot partition is 256 MB and a kernel is about 35 MB, so remove a kernel you no longer need with `apt remove kernel-image-image-<version>`.
+
+Every package comes from the feed, which is checked against the EdgeFirst package signing key. `apt` refuses a feed that is not signed by that key.
+
 ## Publishing
+
+Publish the package feed for a BSP from a build that has built `imx-image-full` with `.github/scripts/publish-apt-feed.sh`:
+
+```bash
+.github/scripts/publish-apt-feed.sh build-imx95-frdm            # Stage and sign under <build-dir>/apt-feed
+.github/scripts/publish-apt-feed.sh --upload build-imx95-frdm   # Publish to https://repo.edgefirst.ai/nxp/
+```
+
+The feed is signed with the key in `~/edgefirst-ca/nxp` (see the README there), and the BSP name and architecture directories come from the `edgefirst-apt-config` package in the build, so the feed has the layout the images were built to read. Publishing replaces the previous contents of the BSP's feed, which makes it a rolling channel for that BSP, and boards that run `apt update` and `apt full-upgrade` follow it. Debug, source and test packages are left out. Run it once per machine; the packages shared between machines are published once.
+
+Set the release a build belongs to with `EDGEFIRST_VERSION` in `conf/local.conf`, as `YYYY.MM.PATCH`. The default in `templates/imx/site.conf` is `~dev` ahead of the next release, so a release build sets it without the suffix, and a release candidate uses `~rcN`.
 
 Upload built images and SDKs to S3 with `repo-deploy.sh`:
 
