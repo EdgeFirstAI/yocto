@@ -4,6 +4,8 @@ EdgeFirst on PHYTEC i.MX 8M Plus boards, built from PHYTEC's `BSP-Yocto-NXP-i.MX
 
 This is the `edgefirst-phytec-imx8mp-PD26.1.y` branch of [EdgeFirstAI/yocto](https://github.com/EdgeFirstAI/yocto). PHYTEC i.MX 95 boards use `edgefirst-phytec-imx95-PD26.1.y`, and the `main` branch lists every supported branch.
 
+This branch is **EdgeFirst Yocto for PHYTEC**, one of the EdgeFirst Yocto products. Releases are versioned `YYYY.MM.PATCH` (for example `2026.10.0`), and a published release is never changed; a fix is the next `PATCH`. All the branches share one set of NPU, GPU, camera and vision-pipeline enablement through [meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst), which is kept current by re-pinning every branch together, and the NXP boards are the reference platform where each new NXP BSP is adopted first.
+
 ## Supported Machines
 
 | MACHINE | Board |
