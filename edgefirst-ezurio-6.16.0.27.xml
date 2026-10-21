@@ -100,7 +100,7 @@
   <project path="sources/meta-edgefirst"
            name="meta-edgefirst"
            remote="edgefirst"
-           revision="9a534c0a6ad3517e4ec9ea59dfc0112cfcb4335a"
+           revision="ccf260e981e72ab477b5246a14d7d35dd34fb48e"
            upstream="main"/>
   <project path="sources/meta-edgefirst-ezurio"
            name="meta-edgefirst-ezurio"
