@@ -22,7 +22,7 @@
 # edgefirst-adopt, the script that moves an existing NXP image onto the feed,
 # once every machine's
 # feed for it is published. Each --upgrade-from names a release and BSP, as
-# 2026.10/imx-6.18.20-2.0.0, that boards may be moved to this one from.
+# 2026.10/imx-6.18.37-2.1.0, that boards may be moved to this one from.
 #
 # Signing uses the key in ~/edgefirst-ca/nxp; see the README there.
 set -euo pipefail

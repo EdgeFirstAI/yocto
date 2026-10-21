@@ -19,16 +19,16 @@ EdgeFirstAI/yocto/
   templates/
     imx/
       bblayers.conf               # NXP layers + meta-edgefirst + meta-kinara
-  edgefirst-imx-6.18.20-2.0.0.xml  # Standalone manifest (NXP BSP + EdgeFirst)
+  edgefirst-imx-6.18.37-2.1.0.xml  # Standalone manifest (NXP BSP + EdgeFirst)
   edgefirst-setup                   # Build environment setup script
   README.md
 ```
 
 ## How the Manifest Works
 
-Users init with `repo init -b edgefirst-imx-6.18.20-2.0.0 -m edgefirst-imx-6.18.20-2.0.0.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
+Users init with `repo init -b edgefirst-imx-6.18.37-2.1.0 -m edgefirst-imx-6.18.37-2.1.0.xml`. That manifest is a **standalone** manifest (not an overlay) that defines all projects directly:
 
-1. **NXP i.MX BSP projects** — all NXP project definitions for the imx-6.18.20-2.0.0 release (imx-linux-wrynose), with NXP root linkfiles removed (`setup-environment`, `imx-setup-release.sh`). NXP `README.md` is exposed as `README-NXP.md` for reference. Since whinlatter the Yocto Project ships as split `bitbake` / `openembedded-core` / `meta-yocto` repositories — there is no `sources/poky/`.
+1. **NXP i.MX BSP projects** — all NXP project definitions for the imx-6.18.37-2.1.0 release (imx-linux-wrynose), with NXP root linkfiles removed (`setup-environment`, `imx-setup-release.sh`). NXP `README.md` is exposed as `README-NXP.md` for reference. Since whinlatter the Yocto Project ships as split `bitbake` / `openembedded-core` / `meta-yocto` repositories — there is no `sources/poky/`.
 2. **`<project name="meta-edgefirst">` / `<project name="meta-kinara">`** — our layers
 3. **`<project name="yocto">`** — self-reference: checks out this repo at `sources/edgefirst-yocto/` and creates symlinks for `.github/`, `README.md`, and `edgefirst-setup`
 
@@ -92,7 +92,7 @@ build-<machine>/         # Per-MACHINE build directory (created by edgefirst-set
 
 ```bash
 repo init -u https://github.com/EdgeFirstAI/yocto.git \
-    -b edgefirst-imx-6.18.20-2.0.0 -m edgefirst-imx-6.18.20-2.0.0.xml
+    -b edgefirst-imx-6.18.37-2.1.0 -m edgefirst-imx-6.18.37-2.1.0.xml
 repo sync
 MACHINE=imx8mp-lpddr4-frdm source edgefirst-setup -b build-imx8mp-frdm
 ```
@@ -140,7 +140,7 @@ The mechanism is opt-in per build with `EDGEFIRST_APT_FEED = "1"` (default `0`, 
 
 ### Release identity
 
-An EdgeFirst Yocto release is named `YYYY.MM` and published quarterly. Within a release the `PATCH` counts rolling updates: `EDGEFIRST_VERSION` is `YYYY.MM.PATCH` (`~dev` or `~rcN` ahead of the release it leads up to), set in `templates/imx/site.conf`. The vendor BSP version (`6.18.20-2.0.0`) is never altered: the kernel, `DISTRO_VERSION` and every NXP package keep their own versions. The EdgeFirst version is added next to it, and a release is always written as the pair "EdgeFirst Yocto 2026.10.1 for NXP i.MX BSP 6.18.20-2.0.0". `EDGEFIRST_FEED_BSP` (`imx-6.18.20-2.0.0`) and `EDGEFIRST_VENDOR` (`NXP i.MX`) in `site.conf` supply the BSP part; `conf/layer.conf` derives `EDGEFIRST_RELEASE` (`YYYY.MM`) and the BSP version from them.
+An EdgeFirst Yocto release is named `YYYY.MM` and published quarterly. Within a release the `PATCH` counts rolling updates: `EDGEFIRST_VERSION` is `YYYY.MM.PATCH` (`~dev` or `~rcN` ahead of the release it leads up to), set in `templates/imx/site.conf`. The vendor BSP version (`6.18.37-2.1.0`) is never altered: the kernel, `DISTRO_VERSION` and every NXP package keep their own versions. The EdgeFirst version is added next to it, and a release is always written as the pair "EdgeFirst Yocto 2026.10.1 for NXP i.MX BSP 6.18.37-2.1.0". `EDGEFIRST_FEED_BSP` (`imx-6.18.37-2.1.0`) and `EDGEFIRST_VENDOR` (`NXP i.MX`) in `site.conf` supply the BSP part; `conf/layer.conf` derives `EDGEFIRST_RELEASE` (`YYYY.MM`) and the BSP version from them.
 
 | Where | What it shows |
 |---|---|
@@ -192,10 +192,10 @@ SDKs install to `/opt/fsl-imx-wayland-{version}-{board}/`.
 ```bash
 # Install
 sudo build-imx8mp-frdm/tmp/deploy/sdk/fsl-imx-wayland-glibc-x86_64-imx-image-full-armv8a-imx8mp-lpddr4-frdm-toolchain-*.sh \
-    -d /opt/fsl-imx-wayland-6.18.20-2.0.0-imx8mp-frdm -y
+    -d /opt/fsl-imx-wayland-6.18.37-2.1.0-imx8mp-frdm -y
 
 # Source environment
-source /opt/fsl-imx-wayland-6.18.20-2.0.0-imx8mp-frdm/environment-setup-armv8a-poky-linux
+source /opt/fsl-imx-wayland-6.18.37-2.1.0-imx8mp-frdm/environment-setup-armv8a-poky-linux
 
 # CMake
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=$OECORE_NATIVE_SYSROOT/usr/share/cmake/OEToolchainConfig.cmake
@@ -244,7 +244,7 @@ Every release of every product is versioned `YYYY.MM.PATCH` (for example `2026.1
 
 | Branch | Platform | BSP | Use for |
 |---|---|---|---|
-| `edgefirst-imx-6.18.20-2.0.0` | NXP i.MX EVK/FRDM (**this branch**) | NXP 6.18.20-2.0.0 (wrynose) | i.MX 95, and i.MX 8M Plus without Ara-2 |
+| `edgefirst-imx-6.18.37-2.1.0` | NXP i.MX EVK/FRDM (**this branch**) | NXP 6.18.37-2.1.0 (wrynose) | i.MX 95, and i.MX 8M Plus without Ara-2 |
 | `edgefirst-imx-6.12.49-2.2.0` | NXP i.MX EVK/FRDM | NXP 6.12.49-2.2.0 (walnascar) | i.MX 8M Plus with the Ara-2 NPU |
 | `torizon` | Toradex Verdin | Torizon OS (walnascar) | Verdin i.MX 8M Plus, Verdin i.MX 95 |
 | `edgefirst-phytec-imx95-PD26.1.y` | PHYTEC phyBOARD-Libra | PHYTEC PD26.1.y on NXP 6.18.20 (wrynose) | phyFLEX-i.MX 95 |
@@ -296,7 +296,7 @@ Every branch tracks `meta-edgefirst` `main` and the rolling fork branches it pin
 
 Do not partially roll out silently. If one branch cannot take the update (for example a vendor kernel needs a backport first), land the fix in that vendor layer, re-pin it, and say which branches are on the new pin and which are not. Branches intentionally held back must say why in their CHANGELOG. A rollout that is part of a product release also bumps that product's `YYYY.MM.PATCH` version; the user decides when a release is ready to publish.
 
-Re-pinning the NXP branches also includes `meta-kinara`, and the 6.12.49 and 6.18.20 branches must always be re-pinned together. A re-pin only reaches boards that update with `apt` once the BSP's package feed is rebuilt and published (see Package Feed and Board Updates).
+Re-pinning the NXP branches also includes `meta-kinara`, and the 6.12.49 and 6.18.37 branches must always be re-pinned together. A re-pin only reaches boards that update with `apt` once the BSP's package feed is rebuilt and published (see Package Feed and Board Updates).
 
 ## Tracking NXP BSP Releases and Owned Patches
 
@@ -337,7 +337,7 @@ Vendor BSPs run older or different kernels and ML layers than the NXP reference,
 
 ### Owned items and where they apply (keep current)
 
-As of 2026-10-19; update this table whenever a rollout or an NXP BSP upgrade changes it.
+As of 2026-10-21; update this table whenever a rollout or an NXP BSP upgrade changes it.
 
 | Item | Owner | NXP wrynose 6.18 | NXP/vendor 6.12 walnascar | Notes |
 |---|---|---|---|---|

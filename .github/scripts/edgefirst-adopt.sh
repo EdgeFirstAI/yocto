@@ -3,7 +3,7 @@
 #
 #   edgefirst-adopt RELEASE BSP [--yes]
 #
-#   edgefirst-adopt 2026.10 imx-6.18.20-2.0.0
+#   edgefirst-adopt 2026.10 imx-6.18.37-2.1.0
 #
 # Run as root on the board. It needs dpkg and apt, so an image built with rpm or
 # ipk packages has to be reflashed instead. The board's packages are then
@@ -34,8 +34,8 @@ for a in "$@"; do
 done
 # shellcheck disable=SC2086
 set -- $ARGS
-RELEASE="${1:?usage: edgefirst-adopt RELEASE BSP, for example 2026.10 imx-6.18.20-2.0.0}"
-BSP="${2:?usage: edgefirst-adopt RELEASE BSP, for example 2026.10 imx-6.18.20-2.0.0}"
+RELEASE="${1:?usage: edgefirst-adopt RELEASE BSP, for example 2026.10 imx-6.18.37-2.1.0}"
+BSP="${2:?usage: edgefirst-adopt RELEASE BSP, for example 2026.10 imx-6.18.37-2.1.0}"
 
 die() { echo "edgefirst-adopt: $*" >&2; exit 1; }
 
