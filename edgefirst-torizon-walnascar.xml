@@ -59,8 +59,8 @@
   <!--  non-public Ara-2 runtime mirror.                              -->
   <!-- ============================================================== -->
 
-  <project name="meta-edgefirst" path="layers/meta-edgefirst" remote="edgefirst" revision="9a534c0a6ad3517e4ec9ea59dfc0112cfcb4335a" upstream="main"/>
-  <project name="meta-edgefirst-torizon" path="layers/meta-edgefirst-torizon" remote="edgefirst" revision="28f2ec00aa40c21bbd78d1b5bbd56b60d550a4a0" upstream="main"/>
+  <project name="meta-edgefirst" path="layers/meta-edgefirst" remote="edgefirst" revision="96f551387d58fa2eac632de2cbf5bb3ef18d6adc" upstream="main"/>
+  <project name="meta-edgefirst-torizon" path="layers/meta-edgefirst-torizon" remote="edgefirst" revision="1e9af8730caede0ca75f0e4b77db413dfb30975f" upstream="main"/>
 
   <!-- Manifest repo self-reference for tooling, pinned to the torizon  -->
   <!-- branch (not main) so README.md/.github come from this branch.   -->

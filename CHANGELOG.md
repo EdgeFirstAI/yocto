@@ -5,9 +5,27 @@ Package version tables live in the [meta-edgefirst changelog](https://github.com
 
 ## [Unreleased]
 
+## [2026.10.0-rc2] - 2026-10-21
+
+### Manifest
+
+- `meta-edgefirst` is advanced to `96f5513` and `meta-edgefirst-torizon` to `1e9af87`.
+
 ### NPU
 
 - Compiling a model from several threads at the same time no longer fails on the Vivante NPU.
+- The Neutron 3.2.3 recipe is self-contained and finds its sources on every Yocto series.
+
+### Layers
+
+- `/etc/os-release` names the EdgeFirst release.
+  `PRETTY_NAME` reads "EdgeFirst Yocto <version> for Toradex Torizon BSP <version>", and `EDGEFIRST_RELEASE`, `EDGEFIRST_VERSION` and `EDGEFIRST_BSP` are added, as on the NXP and Ezurio flavours.
+  Torizon's own `NAME`, `VERSION` and `VERSION_ID` are unchanged.
+
+### Tooling
+
+- `publish-repo.sh` publishes the ed25519 public key next to the OSTree repository, at `ostree/torizon/edgefirst-torizon-ostree-ed25519.pub`.
+- `setup-edgefirst` defaults to `2026.10.0-rc2`.
 
 ## [2026.10.0-rc1] - 2026-10-19
 
