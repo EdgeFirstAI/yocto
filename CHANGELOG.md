@@ -4,6 +4,24 @@ All notable user-visible changes to this branch are documented here. For per-pac
 
 ## [Unreleased]
 
+## [2026.10.0-rc3] - 2026-10-23
+
+Camera and display support, so a board can run a camera and show graphics on the panel.
+
+### Camera
+
+- No camera is enabled out of the box, because which phyCAM module is fitted and which CSI port it is wired to differ per board. Enabling one is a line in `/boot/overlays.txt`; the layer README covers the format and points at PHYTEC's overlay and video documentation for the modules. An edit there is replaced by the next update, since the boot partition is part of the update.
+- Cameras are reached through V4L2, with `v4l-utils`, `media-ctl` and `yavta` on the image. libcamera and ISP processing are i.MX 95 only; this SoC has no NEO ISP.
+
+### Display
+
+- The panel shows a boot splash.
+- Wayland with the Weston compositor is on the image and drives the LVDS panel. Weston starts on demand when a client connects, so it is idle until something draws. Clients can render through DMA-BUF and EGL without a copy.
+
+### Packages
+
+- `edgefirst-client` 2.19.0, from 2.17.0.
+
 ## [2026.10.0-rc2] - 2026-10-23
 
 First release candidate for PHYTEC i.MX 8M Plus. It carries the same EdgeFirst stack as the 2026.10.0-rc2 candidates for Torizon and Ezurio.
