@@ -4,13 +4,26 @@ All notable user-visible changes to this branch are documented here. For per-pac
 
 ## [Unreleased]
 
+## [2026.10.0-rc2] - 2026-10-23
+
+First release candidate for PHYTEC i.MX 8M Plus. It carries the same EdgeFirst stack as the 2026.10.0-rc2 candidates for Torizon and Ezurio.
+
+### Packages
+
+- EdgeFirst Studio on the board: `edgefirst-client` 2.17.0 and `edgefirst-profiler` 1.19.0, on `edgefirst-hal` 0.28.3.
+- NPU runtime: TensorFlow Lite 2.19.0 with the Vivante VX delegate.
+- `videostream` 2.6.1 carries frames between components over DMA-BUF.
+
 ### Images
 
-- The image carries the EdgeFirst capability sets for the NPU, graphics, video codecs, camera, EdgeFirst Studio and diagnostics, installed by default into `phytec-headless-image`. It no longer includes GStreamer: EdgeFirst reaches the camera through V4L2 and the video encoder and decoder through the V4L2 memory-to-memory API, with 103 fewer packages.
+- The image carries the EdgeFirst capability sets for the NPU, graphics, video codecs, EdgeFirst Studio and diagnostics, installed by default into `phytec-headless-image`. It no longer includes GStreamer: EdgeFirst reaches the video encoder and decoder through the V4L2 memory-to-memory API, with 103 fewer packages.
+- The i.MX 8M Plus line ships no EdgeFirst camera stack yet; the i.MX 95 line does. PHYTEC's own phyCAM kernel modules and camera tooling are present as before.
+- `packagegroup-edgefirst-gstreamer` is the single opt-in switch for a GStreamer stack, and on this line it does not build: `edgefirst-gstreamer` 0.4.0 does not compile against `edgefirst-hal` 0.28.3. The switch is i.MX 95 only until that is fixed upstream.
 
 ### NPU
 
 - Compiling a model from several threads at the same time no longer fails on the Vivante NPU.
+- Whole-graph delegation to the Vivante NPU is verified on `imx8mp-phyflex-libra-rdk-2` at roughly 3.5 ms, against 44.7 ms on four CPU threads, for `mobilenet_v1_1.0_224_quant`. The first inference after a model loads takes about 3.3 s because the delegate compiles the graph.
 
 ### Updates
 
