@@ -4,7 +4,8 @@
   BSP-Yocto-NXP-i.MX95-PD26.1.y manifest (NXP 6.18.20-2.0.0, Yocto wrynose).
 
   PHYTEC's projects are kept as published. EdgeFirst adds meta-edgefirst, the
-  PHYTEC vendor layer meta-edgefirst-phytec, and this repository's
+  PHYTEC vendor layer meta-edgefirst-phytec, meta-kinara for the Ara-2
+  accelerator, and this repository's
   self-reference. tools/init adds every <project> here to BBLAYERS unless it
   carries <ignorebaselayer/>.
 -->
@@ -105,7 +106,8 @@
 
 	<!-- EdgeFirst layers -->
 	<project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="3483aecf6117b133e1d72de9c41bf1cb7912d83a" upstream="main"/>
-	<project name="meta-edgefirst-phytec" path="sources/meta-edgefirst-phytec" remote="edgefirst" revision="b2012a8f3a330b75cf4c253a3608d1647f72d1c5" upstream="main"/>
+	<project name="meta-edgefirst-phytec" path="sources/meta-edgefirst-phytec" remote="edgefirst" revision="a497a52aa9c2599cbb5e735a0be2c592c8fda0de" upstream="main"/>
+	<project name="meta-kinara" path="sources/meta-kinara" remote="edgefirst" revision="7d707e5b7de1ead37acb6d404ab5a4e4c2b08b7a" upstream="phytec"/>
 
 	<!-- Manifest repo self-reference for tooling; not a layer -->
 	<project name="yocto" path="sources/edgefirst-yocto" remote="edgefirst" revision="edgefirst-phytec-imx95-PD26.1.y">
