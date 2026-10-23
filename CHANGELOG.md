@@ -4,6 +4,26 @@ All notable user-visible changes to this branch are documented here. For per-pac
 
 ## [Unreleased]
 
+## [2026.10.0-rc3] - 2026-10-23
+
+Camera and display support, so a board can run the camera and show graphics on the panel.
+
+### Camera
+
+- The camera runs through the NEO ISP. libcamera offers processed frames — NV12, NV21, NV16, YUYV, UYVY, RGB888 and BGR888 at 1920x1200 — and loads the tuning file for the sensor behind the module, where previously it delivered raw Bayer from the sensor interface with the ISP bypassed.
+- No camera is enabled out of the box, because which phyCAM module is fitted and which CSI port it is wired to differ per board. Enabling one is a line in `/boot/overlays.txt`; the layer README covers the format and points at PHYTEC's overlay and video documentation for the other modules. An edit there is replaced by the next update, since the boot partition is part of the update.
+- Verified on a phyFLEX-i.MX 95 Libra with a VM-020 phyCAM-L on CSI1 through the FPD-Link deserializer, capturing 1920x1200 continuously.
+- V4L2 capture tooling is on the image: `v4l-utils`, `media-ctl`, `yavta`.
+
+### Display
+
+- The panel shows a boot splash.
+- Wayland with the Weston compositor is on the image and drives the LVDS panel. Weston starts on demand when a client connects, so it is idle until something draws. Clients can render through DMA-BUF and EGL without a copy.
+
+### Packages
+
+- `edgefirst-client` 2.19.0, from 2.17.0.
+
 ## [2026.10.0-rc2] - 2026-10-23
 
 First release candidate for PHYTEC i.MX 95. It carries the same EdgeFirst stack as the 2026.10.0-rc2 candidates for Torizon and Ezurio.
