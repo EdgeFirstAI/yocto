@@ -122,7 +122,7 @@
   <!-- EdgeFirst layers -->
   <project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="3483aecf6117b133e1d72de9c41bf1cb7912d83a" upstream="main"/>
   <project name="meta-edgefirst-phytec" path="sources/meta-edgefirst-phytec" remote="edgefirst" revision="a497a52aa9c2599cbb5e735a0be2c592c8fda0de" upstream="main"/>
-  <project name="meta-kinara" path="sources/meta-kinara" remote="edgefirst" revision="7d707e5b7de1ead37acb6d404ab5a4e4c2b08b7a" upstream="phytec"/>
+  <project name="meta-kinara" path="sources/meta-kinara" remote="edgefirst" revision="1db382da8c09052638eeb9cb1dd98dc1cdcd628c" upstream="phytec"/>
 
   <!-- Manifest repo self-reference for tooling; not a layer -->
   <project name="yocto" path="sources/edgefirst-yocto" remote="edgefirst" revision="edgefirst-phytec-imx8mp-PD26.1.y">
