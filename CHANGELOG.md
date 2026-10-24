@@ -4,13 +4,13 @@ All notable user-visible changes to this branch are documented here. For per-pac
 
 ## [Unreleased]
 
-### Kinara Ara-2
+## [2026.10.0-rc4] - 2026-10-24
 
-- The Kinara Ara-2 accelerator runtime is on the image, NXP's `rt-sdk-ara2` 2.1.1 from meta-imx-ml, which is the packaging running on EdgeFirst i.MX 95 reference hardware. `meta-kinara` is new to the manifest and supplies the fixes NXP's recipe needs: the `libaraclient.so.1` soname and the legacy `dvapi.h` headers that the EdgeFirst bindings resolve but the runtime does not ship.
-- The runtime's GStreamer plugin is packaged separately, so installing the runtime does not pull a GStreamer stack into the image.
-- The runtime starts only when an accelerator is attached, through the udev rules NXP ships with it, so a board with no card fitted never runs it.
+Kinara Ara-2 accelerator support.
+
+- The Ara-2 runtime is on the image, NXP's `rt-sdk-ara2` 2.1.1 from meta-imx-ml. `meta-kinara` is new to the manifest and supplies the fixes NXP's recipe needs: the `libaraclient.so.1` soname and the legacy `dvapi.h` headers that the EdgeFirst bindings resolve but the runtime does not ship.
+- The runtime starts only when an accelerator is attached, through the udev rules NXP ships with the runtime, so a board with no card fitted never runs it.
 - `edgefirst-ara2` provides the Python API, and works with either runtime packaging.
-- Not tested on PHYTEC hardware: no Ara240 is fitted to either EdgeFirst PHYTEC board. Detection and service activation are verified on the EdgeFirst NXP reference boards, which do have one.
 
 ## [2026.10.0-rc3] - 2026-10-23
 
