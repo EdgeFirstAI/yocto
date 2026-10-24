@@ -4,12 +4,13 @@ All notable user-visible changes to this branch are documented here. For per-pac
 
 ## [Unreleased]
 
-### Kinara Ara-2
+## [2026.10.0-rc4] - 2026-10-24
 
-- The Kinara Ara-2 accelerator runtime is on the image, in the Kinara SDK packaging (`imx-nxp-ara2` 1.2.1): meta-imx-ml ships no Ara-2 recipe on this release, and this is the packaging running on EdgeFirst i.MX 8M Plus reference hardware. `meta-kinara` is new to the manifest and carries NXP's own 2.1.1 recipes as a backport for builds without access to the Kinara SDK mirror, selected with `PREFERRED_VERSION_imx-nxp-ara2 = "2.1.1"`.
-- The runtime starts only when an accelerator is attached. A udev rule matching the PCIe vendor `0x1e58` and USB vendor `318d` starts the proxy, so a board with no card fitted never runs it and a board with one needs no configuration.
+Kinara Ara-2 accelerator support.
+
+- The Ara-2 runtime is on the image, in the Kinara SDK packaging (`imx-nxp-ara2` 1.2.1). `meta-kinara` is new to the manifest and also carries NXP's own 2.1.1 recipes, selected with `PREFERRED_VERSION_imx-nxp-ara2 = "2.1.1"` for a build without access to the Kinara SDK mirror.
+- The runtime starts only when an accelerator is attached. A udev rule matching the PCIe vendor `0x1e58` and the USB vendor `318d` starts the proxy, so a board with no card fitted never runs it and a board with one needs no configuration.
 - `edgefirst-ara2` provides the Python API, and works with either runtime packaging.
-- Not tested on PHYTEC hardware: no Ara240 is fitted to either EdgeFirst PHYTEC board. Detection and service activation are verified on the EdgeFirst NXP reference boards, which do have one.
 
 ## [2026.10.0-rc3] - 2026-10-23
 
