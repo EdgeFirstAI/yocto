@@ -13,7 +13,7 @@ export EULA="${EULA:-1}"
 # The release version, YYYY.MM.PATCH with -rcN on a release candidate. It is the
 # image's DISTRO_VERSION, so it names the OSTree commit, os-release and the
 # TEZI image. Bump it with each release.
-EDGEFIRST_VERSION="${EDGEFIRST_VERSION:-2026.10.0-rc2}"
+EDGEFIRST_VERSION="${EDGEFIRST_VERSION:-2026.10.0-rc3}"
 
 source setup-environment "$@" || return
 

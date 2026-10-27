@@ -5,6 +5,31 @@ Package version tables live in the [meta-edgefirst changelog](https://github.com
 
 ## [Unreleased]
 
+## [2026.10.0-rc3] - 2026-10-27
+
+### Manifest
+
+- `meta-edgefirst` is advanced to `74c062f` and `meta-edgefirst-torizon` to `920eec0`.
+
+### Camera and video
+
+- The i.MX 95 image carries libcamera 0.5.2 with the NEO ISP pipeline and IPA, and the libcamera configuration that routes the sensor through the NEO ISP.
+  The Wave6 H.264/HEVC codec and the MXC JPEG codec are available as V4L2 devices, with the Wave6 firmware in the image.
+- The i.MX 8M Plus image carries the Hantro VPU libraries (`libhantro` and `libhantro_vc8000e`), which drive the decoder and the VC8000E encoder.
+- Both images carry `v4l-utils`.
+  None of this uses GStreamer.
+
+### Display
+
+- Weston and `weston-init` are installed on both machines.
+  The service is wanted by `graphical.target`, so it does not start at boot; start it with `systemctl start weston` when a display is attached.
+  The i.MX 8M Plus GPU user space now uses the Wayland build of the NXP libraries.
+- The image gains the `weston` user and the `seat`, `wayland`, `weston-launch` and `weston` groups.
+
+### Components
+
+- `edgefirst-client` is updated to 2.19.0.
+
 ## [2026.10.0-rc2] - 2026-10-21
 
 ### Manifest
