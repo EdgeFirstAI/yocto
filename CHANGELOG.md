@@ -4,6 +4,8 @@ All notable user-visible changes to this branch are documented here. For per-pac
 
 ## [Unreleased]
 
+- meta-kinara moves to the revision carrying the NXP Ara-2 proxy fix. The change applies to NXP's `rt-sdk-ara2` packaging only, which this line does not use, so the images are unaffected.
+
 ## [2026.10.0-rc4] - 2026-10-24
 
 Kinara Ara-2 accelerator support.
