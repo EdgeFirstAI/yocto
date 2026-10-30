@@ -10,7 +10,7 @@ For per-package details, see the layer changelogs linked below.
 ### Updating boards
 
 - Boards running these images update themselves with `apt` from a signed package feed at repo.edgefirst.ai, kernel and device trees included: `apt update`, `apt full-upgrade`, reboot, `apt autoremove`.
-- Releases are named EdgeFirst Yocto YYYY.MM.PATCH. `/etc/os-release` shows the release next to the unchanged NXP BSP version, for example "EdgeFirst Yocto 2026.10.1 for NXP i.MX BSP 6.18.20-2.0.0".
+- Releases are named EdgeFirst Yocto YYYY.MM.PATCH. `/etc/os-release` shows the release next to the unchanged NXP BSP version, for example "EdgeFirst Yocto 2026.10.1 for NXP i.MX BSP 6.18.37-2.1.0".
 - `edgefirst-release-upgrade` moves a board to the next quarterly release.
 - An existing NXP image with deb packages can be moved onto the feed without reflashing with `edgefirst-adopt`; images with other package formats must be reflashed.
 - The update mechanism is opt-in per build with `EDGEFIRST_APT_FEED`; the NXP builds have it on.
@@ -19,12 +19,15 @@ For per-package details, see the layer changelogs linked below.
 ### Images and NPU runtimes
 
 - EdgeFirst services and libraries move to their latest releases, including EdgeFirst HAL 0.28.3, videostream 2.6.1, edgefirst-client 2.17.0 and edgefirst-profiler 1.19.0. The [meta-edgefirst CHANGELOG](https://github.com/EdgeFirstAI/meta-edgefirst/blob/main/CHANGELOG.md) has the full version table.
-- The Neutron NPU on i.MX 95 runs eIQ Neutron SDK 3.2.3, which YOLO11 and YOLO26 models need for accuracy. The kernel gains the matching Neutron mailbox handshake, so the kernel and the 3.2.x firmware must be used together; they are installed together in the image.
+- The Neutron NPU on i.MX 95 runs eIQ Neutron SDK 3.2.3, which YOLO11 and YOLO26 models need for accuracy. NXP's 6.18.37 kernel carries the matching Neutron mailbox handshake, so the kernel and the 3.2.x firmware match without a layer patch.
+- Ara-2 boards use NXP's `imx-nxp-ara2` 3.0 runtime on this BSP.
+- On i.MX 95 the images install `libcamera-edgefirst-config`, so libcamera routes the camera through the NEO ISP and applications get NV12 or YUYV without setting `LIBCAMERA_PIPELINES_MATCH_LIST`.
+- The i.MX 95 19x19 EVK image carries the os08a20 + NEO ISP + ADV7535 device tree on the boot partition. Selecting it takes `fdtfile` in the U-Boot environment.
 - Compiling a model from several threads at the same time no longer fails on the Vivante NPU (i.MX 8M Plus).
 
 ### Branch per BSP
 
-- This branch, `edgefirst-imx-6.18.20-2.0.0`, replaces the `wrynose-6.18.20` bring-up branch and carries only the `edgefirst-imx-6.18.20-2.0.0.xml` manifest, whose self-reference now points at this branch. Every supported platform/BSP now has its own branch, and `main` becomes an index of them.
+- This branch, `edgefirst-imx-6.18.37-2.1.0`, carries only the `edgefirst-imx-6.18.37-2.1.0.xml` manifest for NXP imx-6.18.37-2.1.0, whose self-reference points at this branch. The `edgefirst-imx-6.18.20-2.0.0` and `edgefirst-imx-6.12.49-2.2.0` branches remain for those BSPs. Every supported platform/BSP has its own branch, and `main` is an index of them.
 - The imx-6.12.49-2.2.0 manifest moved to its own `edgefirst-imx-6.12.49-2.2.0` branch, which i.MX 8M Plus boards with the Ara-2 NPU should use: they hang under Ara-2 inference load on this BSP and run stably on 6.12.49.
 - The imx-6.18.2-1.0.0 (whinlatter) manifest is removed; it was a step towards this BSP and remains in this branch's history.
 - `meta-edgefirst` and `meta-kinara` re-pinned to their `main` branches, which now include the wrynose bring-up, and the Ara-2 runtime rework: `imx-nxp-ara2` is one recipe name for NXP's runtime and meta-kinara's Kinara SDK packaging, `edgefirst-ara2` 0.19.0 moved to meta-edgefirst, and `nnstreamer-ara2` is built only with the Kinara SDK runtime.
@@ -32,6 +35,7 @@ For per-package details, see the layer changelogs linked below.
 
 ### BSP Upgrade (wrynose)
 
+- New manifest `edgefirst-imx-6.18.37-2.1.0.xml` for the NXP imx-6.18.37-2.1.0 BSP (Yocto 6.0.2, kernel 6.18.37, Mali graphics r56p0). The 6.18.20 manifest remains on its own branch.
 - New manifest `edgefirst-imx-6.18.20-2.0.0.xml` for the NXP
   imx-6.18.20-2.0.0 BSP (Yocto 5.4 wrynose, kernel 6.18). The
   imx-6.18.2-1.0.0 manifest is retained as the previous BSP, and the
