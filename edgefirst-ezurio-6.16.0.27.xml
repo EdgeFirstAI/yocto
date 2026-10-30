@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   EdgeFirst manifest for Ezurio Nitrogen SMARC boards, based on Ezurio's
-  nitrogen_6.16.0.27.xml manifest (SUMMIT-REL-6.16.0.27: NXP 6.12.49-2.2.0,
-  Yocto walnascar 5.2.4).
+  nitrogen_6.16.0.27.xml manifest in Ezurio/EZ-BSP-Yocto-Release-Packages (EZ BSP
+  6.16.0.27, tag SUMMIT-REL-6.16.0.27: NXP 6.12.49-2.2.0, Yocto walnascar 5.2.4).
 
   Ezurio's projects are kept as published. EdgeFirst adds meta-edgefirst and
   this repository's self-reference.
@@ -105,7 +105,7 @@
   <project path="sources/meta-edgefirst-ezurio"
            name="meta-edgefirst-ezurio"
            remote="edgefirst"
-           revision="d7a57afa9b7f085f3f4c21192e2c34b573803649"
+           revision="29b544e215d142f647565b9c1a7b1e3e497b59dd"
            upstream="main"/>
 
   <!-- Manifest repo self-reference for tooling; not a layer -->

@@ -1,6 +1,6 @@
 # EdgeFirst Yocto for Ezurio
 
-EdgeFirst on Ezurio Nitrogen SMARC boards. The image is built from Ezurio's `SUMMIT-REL-6.16.0.27` release (NXP 6.12.49-2.2.0, Yocto 5.2 walnascar) with [meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst) and [meta-edgefirst-ezurio](https://github.com/EdgeFirstAI/meta-edgefirst-ezurio), and it installs and updates the way Ezurio's own images do: a `.wic.bz2` for flashing media and a signed `.swu` for `fw_update`.
+EdgeFirst on Ezurio Nitrogen SMARC boards. The image is built from Ezurio's EZ BSP release 6.16.0.27 (tag `SUMMIT-REL-6.16.0.27`, NXP 6.12.49-2.2.0, Yocto 5.2 walnascar) with [meta-edgefirst](https://github.com/EdgeFirstAI/meta-edgefirst) and [meta-edgefirst-ezurio](https://github.com/EdgeFirstAI/meta-edgefirst-ezurio), and it installs and updates the way Ezurio's own images do: a `.wic.bz2` for flashing media and a signed `.swu` for `fw_update`.
 
 This is the `edgefirst-ezurio-6.16.0.27` branch of [EdgeFirstAI/yocto](https://github.com/EdgeFirstAI/yocto). The `main` branch lists every supported branch.
 
@@ -25,7 +25,7 @@ There is no GStreamer, NNStreamer, ONNX or Python. The root filesystem is a read
 
 ## Relationship to Ezurio's EZ BSP
 
-EdgeFirst Yocto for Ezurio is built on Ezurio's board support package, [EZ BSP](https://www.ezurio.com/software/ez-bsp), the Linux stack Ezurio ships on its SOMs. It is based on Ezurio's release `SUMMIT-REL-6.16.0.27`, which keeps the Summit names in Ezurio's repositories.
+EdgeFirst Yocto for Ezurio is built on Ezurio's board support package, [EZ BSP](https://www.ezurio.com/software/ez-bsp), the Linux stack Ezurio ships on its SOMs. It is based on Ezurio's EZ BSP release 6.16.0.27, published in [Ezurio/EZ-BSP-Yocto-Release-Packages](https://github.com/Ezurio/EZ-BSP-Yocto-Release-Packages) as the tag `SUMMIT-REL-6.16.0.27`. Ezurio's tags, layers (`meta-summit-som`), distributions (`summitsom-wayland`) and the `-summit` kernel keep the Summit names, so those appear where this page names them; EdgeFirst's own names use EZ BSP.
 
 Au-Zone Technologies provides this release as open source in support of the [EdgeFirst Model Zoo](https://huggingface.co/spaces/EdgeFirst/Models) and the [EdgeFirst Perception Index](https://www.au-zone.com/efpi-ezurio). It adds NPU and GPU enablement, backports, fixes and the EdgeFirst stack for the Nitrogen SMARC i.MX 8M Plus and i.MX 95. It is offered without support. Au-Zone offers commercial support through its Commercial Support and Professional Services.
 
@@ -211,10 +211,10 @@ A release is named `YYYY.MM` and published quarterly, and each update to it is a
 
 ```bash
 $ grep -E '^(PRETTY_NAME|EDGEFIRST)' /etc/os-release
-PRETTY_NAME="EdgeFirst Yocto 2026.10.0 for Ezurio Summit BSP 6.16.0.27"
+PRETTY_NAME="EdgeFirst Yocto 2026.10.0 for Ezurio EZ BSP 6.16.0.27"
 EDGEFIRST_RELEASE="2026.10"
 EDGEFIRST_VERSION="2026.10.0"
-EDGEFIRST_BSP="summit-6.16.0.27"
+EDGEFIRST_BSP="ez-6.16.0.27"
 ```
 
 [meta-edgefirst-ezurio](https://github.com/EdgeFirstAI/meta-edgefirst-ezurio) has `scripts/publish-release.sh` to upload a finished release to the repository.
