@@ -122,6 +122,25 @@ The previous release stays in the other slot. Ezurio's updater does not roll bac
 
 An EdgeFirst release only accepts `.swu` packages signed by the EdgeFirst chain. Development builds made without a signing key are unsigned and can only be installed from a `.wic`.
 
+## Displays and Cameras
+
+Ezurio enables displays, cameras, radios and other carrier hardware with device tree overlays that the `set-mode` tool chooses. The kernel boots the base device tree, so a board with no overlay chosen has no display and no camera, and Weston does not start without a display. Run `set-mode` with no arguments to list the overlays for your board, and `set-mode status` to show the ones in use. `set-mode <overlay> [<overlay> ...]` sets the exact list and reboots the board; the setting is kept in the bootloader environment.
+
+```bash
+set-mode dsi0-7
+```
+
+Ezurio documents the overlays in the First Boot Hardware Configuration section of the [EZ BSP User Guide](https://www.ezurio.com/documentation/user-guide-ez-bsp?product=nitrogen95), and the connectors for each carrier in the [Nitrogen95 SMARC](https://www.ezurio.com/documentation/user-guide-nitrogen95-smarc) and [Nitrogen8M Plus SMARC](https://www.ezurio.com/documentation/user-guide-nitrogen8m-plus-smarc-som) user guides.
+
+| Board | Display | Overlay |
+|---|---|---|
+| Nitrogen95 evaluation kit | The 7 inch MIPI-DSI touch display from the kit | `dsi0-7` |
+| Nitrogen8M Plus on the standard carrier | An HDMI monitor | `hdmi` |
+
+Both overlays were checked on hardware with this image: Weston starts on the display and uses the G2D renderer. Other panels use the `dsi0-10`, `lvds0-7`, `lvds0-10`, `lvds1-7` and `lvds1-10` overlays. On the Nitrogen95 module, LVDS0 is disabled unless 0 ohm resistors are moved, so check the user guide for your hardware before choosing an LVDS overlay.
+
+Cameras use the `csi0-` and `csi1-` overlays for the port the camera is connected to: `ov5640`, `ov5645` or `pivariety`, which is the overlay for Arducam Pivariety cameras. libcamera is in the image, with the NEO ISP on the i.MX 95. Camera support on this image has not been verified yet.
+
 ## Logging In
 
 Ezurio's images ship with the `root` password `summit`:
