@@ -89,6 +89,10 @@ Installing writes the whole of the media, so it erases everything on it.
 
 3. Put the board's boot mode switches in the SD card position, insert the card and power on. The switches and their positions are in the boot mode section of Ezurio's user guide for your module, for example the [Nitrogen8M Plus SMARC](https://www.ezurio.com/documentation/user-guide-nitrogen8m-plus-smarc-som) guide.
 
+The boot console shows which bootloader started. An SD card image starts Ezurio's U-Boot 2025.10 and boots the image. A module that has never been programmed still carries Ezurio's stock U-Boot 2022.04 in its eMMC; it finds no partition table on the eMMC, and does not boot an SD card image. That means the boot mode switches are selecting the eMMC. A module that prints nothing at all is waiting in serial download mode.
+
+An i.MX 8M Plus module on the Nitrogen95 evaluation kit carrier is not a combination Ezurio documents, but it works. On the unit tested, the module booted the SD card with SW3 on, and the documented Nitrogen95 and Nitrogen8M Plus switch tables did not agree with what the board did, so confirm the bootloader banner on the console rather than relying on the switch tables alone.
+
 ### Running From eMMC
 
 A board running from the SD card can install the release onto its eMMC with the `.swu`. Booted from SD, `fw_update` uses the `complete` method, which **erases the entire eMMC**, including `/perm`, partitions it for the A/B layout and writes the bootloader and both root filesystem slots:
@@ -136,10 +140,32 @@ Ezurio documents the overlays in the First Boot Hardware Configuration section o
 |---|---|---|
 | Nitrogen95 evaluation kit | The 7 inch MIPI-DSI touch display from the kit | `dsi0-7` |
 | Nitrogen8M Plus on the standard carrier | An HDMI monitor | `hdmi` |
+| Nitrogen8M Plus module on the Nitrogen95 evaluation kit carrier | The 7 inch MIPI-DSI touch display from the kit | `dsi0-7` |
 
-Both overlays were checked on hardware with this image: Weston starts on the display and uses the G2D renderer. Other panels use the `dsi0-10`, `lvds0-7`, `lvds0-10`, `lvds1-7` and `lvds1-10` overlays. On the Nitrogen95 module, LVDS0 is disabled unless 0 ohm resistors are moved, so check the user guide for your hardware before choosing an LVDS overlay.
+All three combinations were checked on hardware with this image: Weston starts on the display and uses the G2D renderer. Ezurio does not document the Nitrogen8M Plus module on the Nitrogen95 kit carrier, but its `dsi0-7` overlay drives the kit's display. Other panels use the `dsi0-10`, `lvds0-7`, `lvds0-10`, `lvds1-7` and `lvds1-10` overlays. On the Nitrogen95 module, LVDS0 is disabled unless 0 ohm resistors are moved, so check the user guide for your hardware before choosing an LVDS overlay.
 
-Cameras use the `csi0-` and `csi1-` overlays for the port the camera is connected to: `ov5640`, `ov5645` or `pivariety`, which is the overlay for Arducam Pivariety cameras. libcamera is in the image, with the NEO ISP on the i.MX 95, and the Arducam Pivariety driver is installed on both machines. The Arducam xISP camera was checked on the Nitrogen95 kit on `csi0-pivariety`: it streams 1280x720 through `v4l2-ctl` and libcamera's `cam`. The i.MX 8M Plus camera has not been verified yet. The Arducam documentation for Ezurio boards is at [MIPI xISP Camera for Ezurio](https://docs.arducam.com/Ezurio-Camera/MIPI-xISP-Camera-for-Ezurio/); use `set-mode` rather than the U-Boot `fdt_file` step it describes.
+Cameras use the `csi0-` and `csi1-` overlays for the port the camera is connected to: `ov5640`, `ov5645` or `pivariety`, which is the overlay for Arducam Pivariety cameras. The Arducam Pivariety driver is installed on both machines. Set the display and camera overlays in one command, because `set-mode` replaces the whole list:
+
+```bash
+set-mode dsi0-7 csi0-pivariety
+```
+
+The Arducam xISP camera was checked on `csi0-pivariety` on both machines. Each streams 1280x720 at 90 frames per second through `v4l2-ctl`.
+
+| Board | Capture node | Notes |
+|---|---|---|
+| Nitrogen95 kit | `/dev/video0` | Also works through libcamera's `cam`; the NEO ISP path is not tested |
+| Nitrogen8M Plus | `/dev/video3` | V4L2 only; the ISI capture node offers `YUYV`, `NV12`, `RGB3`, `BGR3` and other formats |
+
+libcamera in this image has a pipeline for the i.MX 95 only. The i.MX 8M Plus camera is used through V4L2 until the Camera SDK, which supports both the V4L2 and libcamera APIs, is adopted, so applications that require libcamera, such as the `yolov8_live` example, do not run on the i.MX 8M Plus.
+
+The xISP in the camera runs its own auto exposure and auto white balance, and the first 10 to 20 frames after streaming starts are dark and green. Discard them, or wait before capturing, rather than treating a green first frame as a colour format problem.
+
+The i.MX 95 needs a kernel patch that is part of this image, which enables the device tree links of the CSI-2 receiver. Without it, enabling the sensor link returns `EBUSY` and streaming fails with `EPIPE`. The i.MX 8M Plus uses a different CSI-2 receiver and does not need it.
+
+On the i.MX 95, the `yolov8_live` example from `tflite-rs` runs the YOLOv8n detection model from [EdgeFirst/yolov8-det](https://huggingface.co/EdgeFirst/yolov8-det) on the Neutron NPU with camera frames shared with the NPU through DMA-BUF, at about 74 frames per second end to end with about 13 ms of inference time.
+
+The Arducam documentation for Ezurio boards is at [MIPI xISP Camera for Ezurio](https://docs.arducam.com/Ezurio-Camera/MIPI-xISP-Camera-for-Ezurio/); use `set-mode` rather than the U-Boot `fdt_file` step it describes.
 
 ## Logging In
 
