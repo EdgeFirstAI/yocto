@@ -139,7 +139,7 @@ Ezurio documents the overlays in the First Boot Hardware Configuration section o
 
 Both overlays were checked on hardware with this image: Weston starts on the display and uses the G2D renderer. Other panels use the `dsi0-10`, `lvds0-7`, `lvds0-10`, `lvds1-7` and `lvds1-10` overlays. On the Nitrogen95 module, LVDS0 is disabled unless 0 ohm resistors are moved, so check the user guide for your hardware before choosing an LVDS overlay.
 
-Cameras use the `csi0-` and `csi1-` overlays for the port the camera is connected to: `ov5640`, `ov5645` or `pivariety`, which is the overlay for Arducam Pivariety cameras. libcamera is in the image, with the NEO ISP on the i.MX 95. Camera support on this image has not been verified yet.
+Cameras use the `csi0-` and `csi1-` overlays for the port the camera is connected to: `ov5640`, `ov5645` or `pivariety`, which is the overlay for Arducam Pivariety cameras. libcamera is in the image, with the NEO ISP on the i.MX 95, and the Arducam Pivariety driver is installed on both machines. The Arducam xISP camera was checked on the Nitrogen95 kit on `csi0-pivariety`: it streams 1280x720 through `v4l2-ctl` and libcamera's `cam`. The i.MX 8M Plus camera has not been verified yet. The Arducam documentation for Ezurio boards is at [MIPI xISP Camera for Ezurio](https://docs.arducam.com/Ezurio-Camera/MIPI-xISP-Camera-for-Ezurio/); use `set-mode` rather than the U-Boot `fdt_file` step it describes.
 
 ## Logging In
 
