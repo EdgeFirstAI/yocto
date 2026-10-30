@@ -91,7 +91,7 @@ Installing writes the whole of the media, so it erases everything on it.
 
 The boot console shows which bootloader started. An SD card image starts Ezurio's U-Boot 2025.10 and boots the image. A module that has never been programmed still carries Ezurio's stock U-Boot 2022.04 in its eMMC; it finds no partition table on the eMMC, and does not boot an SD card image. That means the boot mode switches are selecting the eMMC. A module that prints nothing at all is waiting in serial download mode.
 
-An i.MX 8M Plus module on the Nitrogen95 evaluation kit carrier is not a combination Ezurio documents, but it works. On the unit tested, the module booted the SD card with SW3 on, and the documented Nitrogen95 and Nitrogen8M Plus switch tables did not agree with what the board did, so confirm the bootloader banner on the console rather than relying on the switch tables alone.
+An i.MX 8M Plus module on the Nitrogen95 evaluation kit carrier is not a combination Ezurio documents, but it works. On the unit tested, the module booted the SD card with switch 3 of the carrier boot mode switch block S1 on, and the documented Nitrogen95 and Nitrogen8M Plus switch tables did not agree with what the board did, so confirm the bootloader banner on the console rather than relying on the switch tables alone.
 
 ### Running From eMMC
 
