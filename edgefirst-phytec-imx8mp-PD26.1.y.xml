@@ -120,7 +120,7 @@
   <project name="meta-qt6-phytec" path="sources/meta-qt6-phytec"/>
 
   <!-- EdgeFirst layers -->
-  <project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="3483aecf6117b133e1d72de9c41bf1cb7912d83a" upstream="main"/>
+  <project name="meta-edgefirst" path="sources/meta-edgefirst" remote="edgefirst" revision="4d3f393fc7b874957b8f25b60d9c9ca68bfcaa86" upstream="main"/>
   <project name="meta-edgefirst-phytec" path="sources/meta-edgefirst-phytec" remote="edgefirst" revision="884b453f649e0ad19aaea75a0ee61b7e8719ff2f" upstream="main"/>
   <project name="meta-kinara" path="sources/meta-kinara" remote="edgefirst" revision="2276d493facf61235b602af2f39603e85606deab" upstream="phytec"/>
 
