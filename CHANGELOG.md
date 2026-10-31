@@ -4,6 +4,9 @@ All notable user-visible changes to this branch are documented here. For per-pac
 
 ## [Unreleased]
 
+- `edgefirst-client` moves to 2.20.0 and `edgefirst-profiler` to 1.20.1.
+- The images keep libEGL, libGLESv2 and libgbm on the Mali driver after `ldconfig` runs. Mesa and the Mali driver install the same sonames and `ldconfig` had been resolving them to Mesa.
+
 ## [2026.10.0-rc5] - 2026-10-27
 
 - The Ara-2 runtime now starts. NXP's `launch_proxy.sh` clears a stale proxy pidfile with `sudo`, which this image does not ship, so under `set -e` the script ended before launching the proxy. `rt-sdk-ara2.service` reported success regardless, leaving no runtime behind it and no socket for clients to connect to.
